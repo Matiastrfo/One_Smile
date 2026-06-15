@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: dental-manager-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Monta el código fuente para hot-reload en desarrollo
+      - ./backend:/app
+      # Volumen nombrado para persistir la base de datos SQLite
+      - db-data:/app/data
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  db-data:

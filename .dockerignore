@@ -1,0 +1,25 @@
+# Frontend (no se necesita para la imagen del backend)
+frontend/node_modules/
+frontend/dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+backend/venv/
+backend/env/
+
+# Base de datos local
+*.db
+*.sqlite3
+
+# Git & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Archivos no necesarios
+*.md
+.env
+.env.*
