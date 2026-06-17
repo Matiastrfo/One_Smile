@@ -1,6 +1,7 @@
 import { Trash2, Clock, User, Calendar as CalendarIcon, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Appointment } from "../../../types";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../../../components/ui/select";
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -14,7 +15,7 @@ export function AppointmentCard({ appointment, patientName, onDelete, onStatusCh
   const [datePart, timePart] = appointment.date_time.split(" ");
 
   return (
-    <article className="group relative flex flex-col bg-card border border-border/60 hover:border-primary/30 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+    <article className="group relative flex flex-col bg-card border border-border/60 hover:border-primary/40 rounded-2xl p-7 shadow-sm hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 overflow-hidden">
       {/* Decorative top accent line based on status */}
       <div className={`absolute top-0 left-0 right-0 h-1 transition-colors ${
         appointment.status === 'ATTENDED' ? 'bg-emerald-500' :
@@ -23,19 +24,18 @@ export function AppointmentCard({ appointment, patientName, onDelete, onStatusCh
       }`} />
 
       <header className="flex flex-col gap-3 mb-5 mt-1">
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex items-start gap-3">
-            <div className="bg-primary/10 p-2 rounded-full shrink-0 mt-1">
+        <div className="flex justify-between items-center gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-accent shrink-0">
               <User className="h-4 w-4 text-primary" />
             </div>
-            {/* Name wrapper: break-words instead of truncate to show full name */}
-            <h3 className="font-bold text-lg sm:text-xl text-foreground leading-tight break-words">
+            <h3 className="font-bold text-lg sm:text-xl text-foreground leading-tight break-words min-w-0 w-full">
               {patientName}
             </h3>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <Link 
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
               to={`/patients/${appointment.patient_id}`}
               className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all"
               title="Ver Historial Clínico"
@@ -43,9 +43,9 @@ export function AppointmentCard({ appointment, patientName, onDelete, onStatusCh
             >
               <FileText className="h-4 w-4" />
             </Link>
-            <button 
+            <button
               onClick={() => onDelete(appointment.id!)}
-              className="p-2 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-full transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100 shrink-0"
+              className="p-2 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-full transition-all shrink-0"
               title="Cancelar turno"
               aria-label="Cancelar turno"
             >
@@ -56,31 +56,37 @@ export function AppointmentCard({ appointment, patientName, onDelete, onStatusCh
 
         {/* Status Dropdown Pill */}
         <div className="self-start">
-          <select
+          <Select
             value={appointment.status || "PENDING"}
-            onChange={(e) => onStatusChange(appointment.id!, e.target.value)}
-            className={`appearance-none cursor-pointer text-xs font-semibold tracking-wide uppercase border rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary transition-all shadow-sm ${
-              appointment.status === 'ATTENDED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800' :
-              appointment.status === 'ABSENT' ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800' :
-              'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-            }`}
-            aria-label="Cambiar estado del turno"
+            onValueChange={(value) => onStatusChange(appointment.id!, value)}
           >
-            <option value="PENDING">PENDIENTE</option>
-            <option value="ATTENDED">ATENDIDO</option>
-            <option value="ABSENT">AUSENTE</option>
-          </select>
+            <SelectTrigger
+              aria-label="Cambiar estado del turno"
+              className={`w-auto gap-2 cursor-pointer text-xs font-semibold tracking-wide uppercase border rounded-full px-3 py-1.5 shadow-sm focus:ring-offset-1 ${
+                appointment.status === 'ATTENDED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' :
+                appointment.status === 'ABSENT' ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' :
+                'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PENDING">PENDIENTE</SelectItem>
+              <SelectItem value="ATTENDED">ATENDIDO</SelectItem>
+              <SelectItem value="ABSENT">AUSENTE</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </header>
       
       <div className="flex-grow flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-4 text-sm text-foreground">
-          <div className="flex items-center gap-1.5 bg-muted/40 px-2.5 py-1 rounded-md border border-border/40">
-            <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 bg-accent/60 text-primary px-2.5 py-1 rounded-lg">
+            <CalendarIcon className="h-3.5 w-3.5" />
             <span className="font-bold">{datePart}</span>
           </div>
-          <div className="flex items-center gap-1.5 bg-muted/40 px-2.5 py-1 rounded-md border border-border/40">
-            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 bg-accent/60 text-primary px-2.5 py-1 rounded-lg">
+            <Clock className="h-3.5 w-3.5" />
             <time dateTime={appointment.date_time} className="font-bold">{timePart || appointment.date_time}</time>
           </div>
         </div>

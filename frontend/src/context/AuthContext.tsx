@@ -4,6 +4,7 @@ export interface User {
   id: number;
   email: string;
   role: string;
+  name: string;
 }
 
 interface AuthContextType {
@@ -25,8 +26,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Por simplicidad, leeremos el rol del localStorage o decodificaremos el JWT en una v2
     const storedRole = localStorage.getItem("role");
     const storedEmail = localStorage.getItem("email");
+    const storedName = localStorage.getItem("name") ?? "";
     if (token && storedRole && storedEmail && !user) {
-      setUser({ id: 0, email: storedEmail, role: storedRole });
+      setUser({ id: 0, email: storedEmail, role: storedRole, name: storedName });
     }
   }, [token, user]);
 
@@ -34,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("token", newToken);
     localStorage.setItem("role", newUser.role);
     localStorage.setItem("email", newUser.email);
+    localStorage.setItem("name", newUser.name ?? "");
     setToken(newToken);
     setUser(newUser);
   };
@@ -42,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("email");
+    localStorage.removeItem("name");
     setToken(null);
     setUser(null);
     window.location.href = "/login";

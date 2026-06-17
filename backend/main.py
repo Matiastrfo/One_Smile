@@ -7,6 +7,7 @@ from api.auth_router import router as auth_router
 from api.admin_router import router as admin_router
 from api.box_router import router as box_router
 from api.box_payment_router import router as box_payment_router
+from api.contract_router import router as contract_router
 
 app = FastAPI(title="DentalManager API")
 
@@ -29,6 +30,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 app.include_router(box_router, prefix="/api/admin/boxes", tags=["boxes"])
 app.include_router(box_payment_router, prefix="/api/admin/payments", tags=["payments"])
+app.include_router(contract_router, prefix="/api/admin/contracts", tags=["contracts"])
 
 @app.get("/")
 def read_root():

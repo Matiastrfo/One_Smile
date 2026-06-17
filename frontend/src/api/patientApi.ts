@@ -31,6 +31,11 @@ export const addTreatment = async (patientId: number, treatment: any): Promise<a
   return data;
 };
 
+export const updateTreatment = async (patientId: number, treatmentId: number, treatment: any): Promise<any> => {
+  const { data } = await api.put(`/patients/${patientId}/treatments/${treatmentId}`, { ...treatment, patient_id: patientId });
+  return data;
+};
+
 export const addMedicalReport = async (patientId: number, report: any): Promise<any> => {
   const { data } = await api.post(`/patients/${patientId}/medical-reports`, { ...report, patient_id: patientId });
   return data;
@@ -41,12 +46,6 @@ export const getOdontogram = async (patientId: number): Promise<any> => {
   return data;
 };
 
-export const recordToothTreatment = async (patientId: number, toothNumber: number, treatmentData: any): Promise<any> => {
-  const { data } = await api.post(`/patients/${patientId}/odontogram/pieces/${toothNumber}/treatments`, treatmentData);
-  return data;
-};
-
-export const getToothTreatments = async (patientId: number, toothNumber: number): Promise<any> => {
-  const { data } = await api.get(`/patients/${patientId}/odontogram/pieces/${toothNumber}/treatments`);
-  return data;
+export const updateTooth = async (patientId: number, toothNumber: number, update: { treatment_type: string; color: string | null; faces: string[] }): Promise<void> => {
+  await api.put(`/patients/${patientId}/odontogram/pieces/${toothNumber}`, update);
 };

@@ -5,7 +5,7 @@ from domain.user import User
 from services.patient_service import PatientService
 from api.dependencies import get_current_user, require_admin
 from services.odontogram_service import OdontogramService
-from domain.dental_piece import DentalPiece, ToothTreatmentCreate
+from domain.dental_piece import DentalPiece, ToothTreatmentCreate, ToothUpdate
 from domain.patient_report import PatientReport
 from domain.treatment import Treatment
 from domain.medical_report import MedicalReport
@@ -15,11 +15,12 @@ patient_service = PatientService()
 
 @router.post("/", response_model=Patient)
 def create_patient(patient: Patient, current_user: User = Depends(get_current_user)):
+    patient.professional_id = current_user.id
     return patient_service.create_patient(patient)
 
 @router.get("/", response_model=List[Patient])
 def get_patients(search: Optional[str] = None, current_user: User = Depends(get_current_user)):
-    return patient_service.get_all_patients(search)
+    return patient_service.get_all_patients(search, professional_id=current_user.id)
 
 
 
@@ -35,6 +36,11 @@ def add_treatment(patient_id: int, treatment: Treatment, current_user: User = De
     treatment.patient_id = patient_id
     treatment.professional_id = current_user.id
     return patient_service.add_treatment(treatment)
+
+@router.put("/{patient_id}/treatments/{treatment_id}", response_model=Treatment)
+def update_treatment(patient_id: int, treatment_id: int, treatment: Treatment, current_user: User = Depends(get_current_user)):
+    treatment.patient_id = patient_id
+    return patient_service.update_treatment(treatment_id, treatment)
 
 @router.post("/{patient_id}/medical-reports", response_model=MedicalReport)
 def add_medical_report(patient_id: int, report: MedicalReport, current_user: User = Depends(get_current_user)):
@@ -59,18 +65,13 @@ odontogram_service = OdontogramService()
 def get_odontogram(patient_id: int, current_user: User = Depends(get_current_user)):
     return odontogram_service.get_odontogram(patient_id)
 
-@router.post("/{patient_id}/odontogram/pieces/{tooth_number}/treatments")
-def record_tooth_treatment(patient_id: int, tooth_number: int, data: ToothTreatmentCreate, current_user: User = Depends(get_current_user)):
-    odontogram_service.record_tooth_treatment(
+@router.put("/{patient_id}/odontogram/pieces/{tooth_number}")
+def update_tooth(patient_id: int, tooth_number: int, data: ToothUpdate, current_user: User = Depends(get_current_user)):
+    odontogram_service.update_tooth(
         patient_id=patient_id,
         tooth_number=tooth_number,
-        professional_id=current_user.id,
-        condition=data.condition,
-        description=data.description or "",
-        price=data.price
+        treatment_type=data.treatment_type,
+        color=data.color,
+        faces=data.faces,
     )
-    return {"message": "Tratamiento registrado y estado actualizado"}
-
-@router.get("/{patient_id}/odontogram/pieces/{tooth_number}/treatments", response_model=List[Treatment])
-def get_tooth_treatments(patient_id: int, tooth_number: int, current_user: User = Depends(get_current_user)):
-    return odontogram_service.get_tooth_treatments(patient_id, tooth_number)
+    return {"message": "ok"}

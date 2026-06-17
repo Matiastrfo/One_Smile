@@ -14,6 +14,18 @@ class TreatmentRepository:
         conn.close()
         return treatment
     
+    def update(self, treatment_id: int, treatment: Treatment) -> Treatment:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE treatments SET date_time = ?, description = ?, price = ? WHERE id = ?",
+            (treatment.date_time, treatment.description, treatment.price, treatment_id)
+        )
+        conn.commit()
+        conn.close()
+        treatment.id = treatment_id
+        return treatment
+
     def get_by_patient(self, patient_id: int) -> list[Treatment]:
         conn = get_connection()
         cursor = conn.cursor()

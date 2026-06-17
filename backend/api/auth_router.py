@@ -30,7 +30,7 @@ def login_for_access_token(request: LoginRequest):
         data={"sub": user_in_db.email, "role": user_in_db.role}, expires_delta=access_token_expires
     )
     
-    return {"access_token": access_token, "token_type": "bearer", "role": user_in_db.role}
+    return {"access_token": access_token, "token_type": "bearer", "role": user_in_db.role, "name": user_in_db.name}
 
 @router.get("/me", response_model=User)
 def read_users_me(current_user: User = Depends(get_current_user)):

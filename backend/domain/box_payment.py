@@ -10,6 +10,7 @@ class BoxPaymentBase(BaseModel):
     payment_date: Optional[str] = None
     amount: Optional[float] = None
     notes: Optional[str] = None
+    contract_id: Optional[int] = None
 
 class BoxPaymentCreate(BoxPaymentBase):
     pass

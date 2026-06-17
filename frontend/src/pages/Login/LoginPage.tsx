@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Lock, Mail, ActivitySquare, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Lock, Mail, AlertCircle, Eye, EyeOff } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import logo from "../../assets/logo.png";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
@@ -19,7 +20,7 @@ export function LoginPage() {
       return data;
     },
     onSuccess: (data) => {
-      login(data.access_token, { id: 0, email, role: data.role });
+      login(data.access_token, { id: 0, email, role: data.role, name: data.name ?? "" });
       navigate("/");
     },
     onError: (error: any) => {
@@ -38,12 +39,7 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo/Brand Section */}
         <div className="flex flex-col items-center justify-center mb-10">
-          <div className="bg-primary/10 p-3 rounded-2xl mb-4 shadow-sm ring-1 ring-primary/20">
-            <ActivitySquare className="h-10 w-10 text-primary" />
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            DentalManager<span className="text-blue-500 font-light">Pro</span>
-          </h1>
+          <img src={logo} alt="OneSmile" className="h-56 w-auto mb-2 object-contain" />
           <p className="text-muted-foreground mt-2 font-medium">Ingresá tus credenciales para continuar</p>
         </div>
 

@@ -62,7 +62,7 @@ export function PaymentModal({ payment, onClose }: PaymentModalProps) {
               className="w-full bg-background border border-input rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="PENDING">Pendiente</option>
-              <option value="IN_PROGRESS">En Curso</option>
+              <option value="IN_PROGRESS">Pago Parcial</option>
               <option value="PAID">Pagado</option>
             </select>
           </div>

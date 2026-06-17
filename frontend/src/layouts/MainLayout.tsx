@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import logo from "../assets/logo.png";
+import { TodayBanner } from "../components/TodayBanner";
 
 export function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -31,25 +33,26 @@ export function MainLayout() {
       )}
 
       {/* Sidebar Principal */}
-      <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col transform transition-transform duration-300 ease-in-out
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-card text-foreground border-r flex flex-col transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
           md:relative md:translate-x-0
         `}
       >
-        <div className="p-6 border-b flex justify-between items-center">
-          <h1 className="text-xl font-bold text-primary flex items-center gap-2">
-            DentalManager<span className="text-blue-500">Pro</span>
-          </h1>
-          <button 
+        <div className="p-4 border-b flex justify-between items-center">
+          <img src={logo} alt="OneSmile" className="h-36 w-auto flex-1 object-contain" />
+          <button
             className="md:hidden p-1 text-muted-foreground hover:bg-muted rounded-md"
             onClick={() => setIsSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-        
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+          <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Menú principal
+          </p>
           {navLinks.map((link) => {
             const isActive = location.pathname.startsWith(link.to);
             return (
@@ -57,23 +60,40 @@ export function MainLayout() {
                 key={link.to}
                 to={link.to}
                 onClick={() => setIsSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${
-                  isActive 
-                    ? "bg-primary/10 text-primary" 
+                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
               >
-                <link.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                <span
+                  className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-accent text-primary group-hover:bg-white"
+                  }`}
+                >
+                  <link.icon className="h-4 w-4" />
+                </span>
                 {link.label}
               </Link>
             );
           })}
         </nav>
-        
-        <div className="p-4 border-t">
+
+        <div className="p-4 border-t space-y-3">
+          <div className="flex items-center gap-3 px-1">
+            <div className="flex items-center justify-center h-9 w-9 rounded-full bg-primary text-primary-foreground font-semibold uppercase shrink-0">
+              {user?.email?.charAt(0) ?? "U"}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{user?.email}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">{user?.role}</p>
+            </div>
+          </div>
           <button
             onClick={logout}
-            className="flex items-center w-full gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+            className="flex items-center w-full gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium text-rose-500 hover:bg-rose-50"
           >
             <LogOut className="h-4 w-4" />
             Cerrar Sesión
@@ -95,15 +115,12 @@ export function MainLayout() {
           </button>
           
           <div className="font-semibold text-foreground md:hidden">
-            DentalManager<span className="text-blue-500">Pro</span>
-          </div>
-          
-          {/* Contenido derecho del header */}
-          <div className="ml-auto hidden md:flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="px-2 py-1 bg-muted rounded-md text-xs font-semibold uppercase tracking-wider">{user?.role}</span>
-            {user?.email}
+            One<span className="text-accent-foreground">Smile</span>
           </div>
         </header>
+
+        {/* Banner de turnos de hoy */}
+        <TodayBanner />
 
         {/* Contenido de la página */}
         <div className="flex-1 overflow-auto p-4 md:p-8">

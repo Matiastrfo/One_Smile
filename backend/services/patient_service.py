@@ -18,8 +18,8 @@ class PatientService:
     def create_patient(self, patient: Patient) -> Patient:
         return self.repository.insert(patient)
 
-    def get_all_patients(self, search: str = None) -> List[Patient]:
-        return self.repository.get_all(search)
+    def get_all_patients(self, search: str = None, professional_id: int = None) -> List[Patient]:
+        return self.repository.get_all(search, professional_id)
 
     def get_patient_report(self, patient_id: int) -> PatientReport:
         patient = self.repository.get_by_id(patient_id)
@@ -39,6 +39,9 @@ class PatientService:
         
     def add_treatment(self, treatment: Treatment) -> Treatment:
         return self.treatment_repo.insert(treatment)
+
+    def update_treatment(self, treatment_id: int, treatment: Treatment) -> Treatment:
+        return self.treatment_repo.update(treatment_id, treatment)
         
     def add_medical_report(self, report: MedicalReport) -> MedicalReport:
         return self.medical_report_repo.insert(report)

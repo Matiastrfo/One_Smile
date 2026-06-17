@@ -16,3 +16,7 @@ export const updatePayment = async (id: number, payment: Partial<BoxPayment>): P
   const { data } = await api.put(`/api/admin/payments/${id}`, payment);
   return data;
 };
+
+export const deletePayment = async (id: number): Promise<void> => {
+  await api.delete(`/api/admin/payments/${id}`);
+};

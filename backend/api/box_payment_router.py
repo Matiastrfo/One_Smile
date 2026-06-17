@@ -34,6 +34,15 @@ def generate_monthly_payments(month_year: str = None):
     count = payment_service.generate_monthly_payments(month_year)
     return GenerateResponse(generated_count=count, month_year=month_year)
 
+@router.delete("/{payment_id}")
+def delete_payment(payment_id: int):
+    payment = payment_repo.get_by_id(payment_id)
+    if not payment:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+    payment_repo.delete(payment_id)
+    return {"detail": "Pago eliminado"}
+
+
 @router.put("/{payment_id}", response_model=BoxPayment)
 def update_payment(payment_id: int, payment_update: BoxPaymentUpdate):
     payment = payment_repo.get_by_id(payment_id)

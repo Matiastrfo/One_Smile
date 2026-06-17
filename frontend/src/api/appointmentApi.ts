@@ -18,3 +18,13 @@ export const deleteAppointment = async (id: number): Promise<void> => {
 export const updateAppointmentStatus = async (id: number, status: string): Promise<void> => {
   await api.patch(`/appointments/${id}/status`, { status });
 };
+
+export const quickCreateAppointment = async (body: {
+  patient_name: string;
+  patient_phone?: string;
+  date_time: string;
+  reason?: string;
+}): Promise<Appointment> => {
+  const { data } = await api.post("/appointments/quick", body);
+  return data;
+};
