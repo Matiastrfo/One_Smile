@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
+const { autoUpdater } = require('electron-updater');
 
 const isDev = !app.isPackaged;
 const BACKEND_PORT = 8000;
@@ -78,11 +79,39 @@ function createWindow() {
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Actualización disponible',
+      message: 'Hay una nueva versión de ONE Smile disponible. Se descargará en segundo plano.',
+      buttons: ['Aceptar'],
+    });
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Actualización lista',
+      message: 'La actualización fue descargada. La aplicación se reiniciará para instalarla.',
+      buttons: ['Reiniciar ahora'],
+    }).then(() => {
+      autoUpdater.quitAndInstall();
+    });
+  });
+
+  autoUpdater.checkForUpdatesAndNotify();
+}
+
 app.whenReady().then(async () => {
   startBackend();
   try {
     await waitForBackend();
     createWindow();
+    if (!isDev) setupAutoUpdater();
   } catch {
     dialog.showErrorBox('Error', 'No se pudo iniciar el servidor. Cerrando la aplicación.');
     app.quit();
