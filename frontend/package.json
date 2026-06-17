@@ -3,13 +3,13 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "main": "../electron/main.cjs",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron ../electron/main.cjs\"",
+    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron ../electron/main.cjs\" --kill-others-on-fail",
     "electron:build": "npm run build && electron-builder"
   },
   "build": {
@@ -20,7 +20,11 @@
     },
     "files": [
       "dist/**/*",
-      "../electron/**/*"
+      {
+        "from": "../electron",
+        "to": "electron",
+        "filter": ["**/*"]
+      }
     ],
     "extraResources": [
       {
@@ -30,14 +34,11 @@
       }
     ],
     "win": {
-      "target": "nsis",
-      "icon": "src/assets/logo.png"
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "src/assets/logo.png",
-      "installerHeaderIcon": "src/assets/logo.png",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ONE Smile"

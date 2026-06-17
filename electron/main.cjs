@@ -60,10 +60,11 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'ONE Smile',
-    icon: path.join(__dirname, '..', 'frontend', 'src', 'assets', 'logo.png'),
+    icon: isDev ? path.join(__dirname, '..', 'frontend', 'src', 'assets', 'logo.png') : path.join(__dirname, '..', 'dist', 'assets', 'logo-BwxBEU-o.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: false,
     },
     autoHideMenuBar: true,
   });
@@ -72,7 +73,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
+    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
 }
 

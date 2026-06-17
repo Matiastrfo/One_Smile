@@ -44,6 +44,8 @@ export interface PatientReport {
 export interface Box {
   id?: number;
   name: string;
+  professional_morning_id?: number;
+  professional_afternoon_id?: number;
 }
 
 export interface BoxPayment {

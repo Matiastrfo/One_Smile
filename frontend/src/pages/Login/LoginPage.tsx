@@ -50,7 +50,7 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {errorMsg && (
-              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+              <div className="bg-rose-100 border border-rose-300 text-rose-700 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-3">
                 <AlertCircle className="h-5 w-5 shrink-0" />
                 <p>{errorMsg}</p>
               </div>

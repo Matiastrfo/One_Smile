@@ -22,7 +22,7 @@ api.interceptors.response.use(
       localStorage.removeItem("token");
       localStorage.removeItem("role");
       localStorage.removeItem("email");
-      window.location.href = "/login";
+      window.location.hash = "#/login";
     }
     return Promise.reject(error);
   }

@@ -28,8 +28,6 @@ const STATUS_CONFIG = {
   ABSENT:   { label: "Ausente",    icon: XCircle,      cls: "bg-rose-500 text-white border-rose-500" },
 };
 
-const STATUSES = ["PENDING", "ATTENDED", "ABSENT"] as const;
-
 export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, onStatusChange }: DayPanelProps) {
   const { user } = useAuth();
   const sorted = [...appointments].sort((a, b) => a.date_time.localeCompare(b.date_time));
@@ -67,7 +65,7 @@ export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, 
           sorted.map(appt => {
             const time = appt.date_time.split(" ")[1] ?? "";
             const status = (appt.status ?? "PENDING") as keyof typeof STATUS_CONFIG;
-            const { label, icon: Icon, cls } = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
+            const { icon: Icon, cls } = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
 
             return (
               <div key={appt.id} className="flex items-start gap-3 px-5 py-4 hover:bg-muted/20 transition-colors">

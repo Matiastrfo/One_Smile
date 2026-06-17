@@ -78,8 +78,8 @@ export function TreatmentPanel({ selected, onChange }: TreatmentPanelProps) {
               style={{ backgroundColor: COLOR_HEX[c] }}
             >
               {selected.color === c && (
-                <span className="absolute inset-0 rounded-full ring-2 ring-offset-2 ring-offset-card"
-                  style={{ ringColor: COLOR_HEX[c], boxShadow: `0 0 0 2px white, 0 0 0 4px ${COLOR_HEX[c]}` }} />
+                <span className="absolute inset-0 rounded-full"
+                  style={{ boxShadow: `0 0 0 2px white, 0 0 0 4px ${COLOR_HEX[c]}` }} />
               )}
             </button>
           ))}
@@ -93,8 +93,7 @@ export function TreatmentPanel({ selected, onChange }: TreatmentPanelProps) {
       <div className="flex flex-col py-1.5 flex-1">
         {TREATMENTS.map((cfg, i) => {
           const isActive = selected.treatment_type === cfg.type;
-          const isFirst = i === 0;
-          const showDivider = i === 10; // antes de prótesis completa y puente
+          const showDivider = i === 10;
           return (
             <div key={cfg.type}>
               {showDivider && <div className="mx-3 my-1 border-t border-border/40" />}

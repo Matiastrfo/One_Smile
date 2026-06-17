@@ -5,6 +5,16 @@ import path from "path"
 
 export default defineConfig({
   base: './',
+  build: {
+    modulePreload: false,
+    rollupOptions: {
+      output: {
+        format: 'iife',
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+      }
+    }
+  },
   plugins: [
     react(),
     VitePWA({

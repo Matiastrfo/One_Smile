@@ -47,8 +47,8 @@ export function PaymentsPage() {
     const key = `${p.professional_email}__${p.box_id}-${p.shift}`;
     if (!acc[key]) {
       acc[key] = {
-        email: p.professional_email,
-        boxName: p.box_name,
+        email: p.professional_email ?? '',
+        boxName: p.box_name ?? '',
         shift: p.shift,
         paidMonths: [],
         pendingMonths: [],
@@ -94,7 +94,7 @@ export function PaymentsPage() {
     // Order payments by month_year descending, then by professional email
     const sortedPayments = [...payments].sort((a, b) =>
       b.month_year.localeCompare(a.month_year) ||
-      a.professional_email.localeCompare(b.professional_email)
+      (a.professional_email ?? '').localeCompare(b.professional_email ?? '')
     );
 
     const rows1 = sortedPayments.map(p => {
@@ -289,7 +289,7 @@ export function PaymentsPage() {
                         </thead>
                         <tbody className="divide-y divide-border/40">
                           {[...paymentsByMonth[month]]
-                            .sort((a, b) => a.professional_email.localeCompare(b.professional_email))
+                            .sort((a, b) => (a.professional_email ?? '').localeCompare(b.professional_email ?? ''))
                             .map(payment => (
                               <tr key={payment.id} className="hover:bg-muted/30 transition-colors">
                                 <td className="px-4 py-3 font-medium text-foreground">{payment.professional_email}</td>

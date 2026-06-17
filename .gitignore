@@ -31,6 +31,11 @@ frontend/.npm/
 .env.test.local
 .env.production.local
 
+# Electron build outputs
+backend-dist/
+build-tmp/
+dist-electron/
+
 # IDEs y Sistema Operativo
 .vscode/
 .idea/
