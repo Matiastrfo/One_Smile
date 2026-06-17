@@ -2,7 +2,7 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_NAME = "dentalmanager.db"
+DB_NAME = os.environ.get("DB_PATH", "dentalmanager.db")
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
