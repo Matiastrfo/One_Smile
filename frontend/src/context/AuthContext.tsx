@@ -19,33 +19,31 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
+  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem("token"));
 
   useEffect(() => {
-    // Si hay un token pero no hay usuario en memoria, idealmente llamaríamos a /api/auth/me
-    // Por simplicidad, leeremos el rol del localStorage o decodificaremos el JWT en una v2
-    const storedRole = localStorage.getItem("role");
-    const storedEmail = localStorage.getItem("email");
-    const storedName = localStorage.getItem("name") ?? "";
+    const storedRole = sessionStorage.getItem("role");
+    const storedEmail = sessionStorage.getItem("email");
+    const storedName = sessionStorage.getItem("name") ?? "";
     if (token && storedRole && storedEmail && !user) {
       setUser({ id: 0, email: storedEmail, role: storedRole, name: storedName });
     }
   }, [token, user]);
 
   const login = (newToken: string, newUser: User) => {
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("role", newUser.role);
-    localStorage.setItem("email", newUser.email);
-    localStorage.setItem("name", newUser.name ?? "");
+    sessionStorage.setItem("token", newToken);
+    sessionStorage.setItem("role", newUser.role);
+    sessionStorage.setItem("email", newUser.email);
+    sessionStorage.setItem("name", newUser.name ?? "");
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("email");
-    localStorage.removeItem("name");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("role");
+    sessionStorage.removeItem("email");
+    sessionStorage.removeItem("name");
     setToken(null);
     setUser(null);
     window.location.hash = "#/login";

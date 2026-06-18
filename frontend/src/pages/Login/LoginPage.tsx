@@ -7,8 +7,8 @@ import { useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
 
 export function LoginPage() {
-  const [email, setEmail] = useState(() => localStorage.getItem('saved_email') ?? "");
-  const [password, setPassword] = useState(() => localStorage.getItem('saved_password') ?? "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const { login } = useAuth();
@@ -20,8 +20,6 @@ export function LoginPage() {
       return data;
     },
     onSuccess: (data) => {
-      localStorage.setItem('saved_email', email);
-      localStorage.setItem('saved_password', password);
       login(data.access_token, { id: 0, email, role: data.role, name: data.name ?? "" });
       navigate("/");
     },
