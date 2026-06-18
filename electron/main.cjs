@@ -99,7 +99,8 @@ function setupAutoUpdater() {
       message: 'La actualización fue descargada. La aplicación se reiniciará para instalarla.',
       buttons: ['Reiniciar ahora'],
     }).then(() => {
-      autoUpdater.quitAndInstall();
+      if (backendProcess) backendProcess.kill();
+      autoUpdater.quitAndInstall(true, true);
     });
   });
 
