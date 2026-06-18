@@ -48,7 +48,7 @@ export function LoginPage() {
           {/* Decorative subtle top line */}
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 to-primary" />
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" autoComplete="on">
             {errorMsg && (
               <div className="bg-rose-100 border border-rose-300 text-rose-700 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-3">
                 <AlertCircle className="h-5 w-5 shrink-0" />
@@ -64,6 +64,8 @@ export function LoginPage() {
                 </div>
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -83,6 +85,8 @@ export function LoginPage() {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
+                  name="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

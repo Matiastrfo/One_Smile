@@ -1,7 +1,7 @@
 {
   "name": "one-smile",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.5",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -40,10 +40,12 @@
     "publish": {
       "provider": "github",
       "owner": "Matiastrfo",
-      "repo": "One_Smile"
+      "repo": "One_Smile",
+      "releaseType": "release"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "src/assets/logo.ico"
     },
     "nsis": {
       "oneClick": false,

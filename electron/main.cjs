@@ -61,7 +61,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'ONE Smile',
-    icon: isDev ? path.join(__dirname, '..', 'frontend', 'src', 'assets', 'logo.png') : path.join(__dirname, '..', 'dist', 'assets', 'logo-BwxBEU-o.png'),
+    icon: path.join(__dirname, '..', 'frontend', 'src', 'assets', 'logo.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
