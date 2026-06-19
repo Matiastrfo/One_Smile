@@ -54,6 +54,25 @@ export const updateTooth = async (patientId: number, toothNumber: number, update
   await api.put(`/patients/${patientId}/odontogram/pieces/${toothNumber}`, update);
 };
 
+export const getPatientAccount = async (patientId: number) => {
+  const { data } = await api.get(`/patients/${patientId}/account`);
+  return data;
+};
+
+export const getAccountSummary = async () => {
+  const { data } = await api.get("/patients/account-summary");
+  return data;
+};
+
+export const addPatientPayment = async (patientId: number, payment: { date: string; amount: number; description: string }) => {
+  const { data } = await api.post(`/patients/${patientId}/payments`, { ...payment, patient_id: patientId });
+  return data;
+};
+
+export const deletePatientPayment = async (patientId: number, paymentId: number) => {
+  await api.delete(`/patients/${patientId}/payments/${paymentId}`);
+};
+
 export const uploadPatientPhoto = async (patientId: number, file: File): Promise<Patient> => {
   const form = new FormData();
   form.append("file", file);

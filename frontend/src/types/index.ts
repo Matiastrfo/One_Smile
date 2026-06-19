@@ -105,6 +105,41 @@ export const DAY_LABELS: Record<DayOfWeek, string> = {
   THURSDAY: 'Jueves', FRIDAY: 'Viernes',
 };
 
+export interface PatientPayment {
+  id?: number;
+  patient_id: number;
+  date: string;
+  amount: number;
+  description: string;
+  professional_name?: string;
+}
+
+export interface AccountEntry {
+  id: number;
+  source: "treatment" | "payment";
+  date: string;
+  description: string;
+  amount: number;
+  professional_name?: string;
+}
+
+export interface PatientAccount {
+  entries: AccountEntry[];
+  total_charges: number;
+  total_payments: number;
+  balance: number;
+}
+
+export interface AccountSummaryRow {
+  patient_id: number;
+  patient_name: string;
+  last_name?: string;
+  dni?: string;
+  total_charges: number;
+  total_payments: number;
+  balance: number;
+}
+
 export type TreatmentType = 'NONE' | 'CARIES' | 'FILLING' | 'EXTRACTION_PENDING' | 'EXTRACTED' | 'ABSENT' | 'CROWN' | 'RX' | 'IMPLANT' | 'PERNO' | 'ENDODONCIA' | 'PROTESIS' | 'PROTESIS_PARCIAL' | 'PUENTE';
 export type TreatmentColor = 'BLUE' | 'RED' | 'GREEN';
 export type ToothFace = 'top' | 'bottom' | 'left' | 'right' | 'center';

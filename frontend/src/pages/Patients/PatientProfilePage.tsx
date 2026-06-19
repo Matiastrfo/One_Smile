@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto } from "../../api/patientApi";
+import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment } from "../../api/patientApi";
+import type { PatientAccount } from "../../types";
 import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf } from "../../utils/odontogramPdf";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram from "../../components/Odontogram/Odontogram";
@@ -13,8 +14,11 @@ export function PatientProfilePage() {
   const patientId = parseInt(id || "0");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   
-  const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram">("odontogram");
+  const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram" | "cuenta-corriente">((location.state as any)?.openTab ?? "odontogram");
+  const [paymentForm, setPaymentForm] = useState({ date: new Date().toISOString().split("T")[0], amount: "", description: "Pago" });
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [odontogramPartialStart, setOdontogramPartialStart] = useState<number | null>(null);
   const [medicalHistory, setMedicalHistory] = useState({ blood_type: "", allergies: "", diseases: "", medications: "", observations: "" });
   const [filiatorio, setFiliatorio] = useState({
@@ -229,6 +233,31 @@ export function PatientProfilePage() {
   });
 
 
+  const { data: account } = useQuery<PatientAccount>({
+    queryKey: ["patientAccount", patientId],
+    queryFn: () => getPatientAccount(patientId),
+    enabled: activeTab === "cuenta-corriente",
+  });
+
+  const addPaymentMutation = useMutation({
+    mutationFn: () => addPatientPayment(patientId, { date: paymentForm.date, amount: parseFloat(paymentForm.amount), description: paymentForm.description }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patientAccount", patientId] });
+      queryClient.invalidateQueries({ queryKey: ["accountSummary"] });
+      setPaymentForm({ date: new Date().toISOString().split("T")[0], amount: "", description: "Pago" });
+      setShowPaymentForm(false);
+    },
+    onError: () => alert("Error al registrar el pago"),
+  });
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: (paymentId: number) => deletePatientPayment(patientId, paymentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patientAccount", patientId] });
+      queryClient.invalidateQueries({ queryKey: ["accountSummary"] });
+    },
+  });
+
   if (isLoading) return <div className="p-8 text-center animate-pulse">Cargando Historia Clínica...</div>;
   if (!report) return <div className="p-8 text-center text-red-500">Paciente no encontrado.</div>;
 
@@ -255,6 +284,12 @@ export function PatientProfilePage() {
           className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "filiatorio" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
         >
           <User className="h-4 w-4" /> Datos Filiatorios
+        </button>
+        <button
+          onClick={() => setActiveTab("cuenta-corriente")}
+          className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "cuenta-corriente" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
+        >
+          <Wallet className="h-4 w-4" /> Cuenta Corriente
         </button>
         <button
           onClick={() => setActiveTab("history")}
@@ -501,6 +536,13 @@ export function PatientProfilePage() {
                 Informe PDF
               </button>
               <button
+                onClick={() => setActiveTab("cuenta-corriente")}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border/60 text-sm font-semibold hover:bg-accent transition-colors"
+              >
+                <Wallet className="h-4 w-4 text-primary" />
+                Cuenta Corriente
+              </button>
+              <button
                 onClick={() => navigate('/appointments', { state: { preselectedPatientId: patientId } })}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all shadow-md shadow-primary/30"
               >
@@ -533,6 +575,132 @@ export function PatientProfilePage() {
             )}
           </div>
         )}
+
+        {/* TAB: Cuenta Corriente */}
+        {activeTab === "cuenta-corriente" && (() => {
+          const entries = account?.entries ?? [];
+          let running = 0;
+          const rows = entries.map(e => {
+            if (e.source === "treatment") running += e.amount;
+            else running -= e.amount;
+            return { ...e, running };
+          });
+          const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+          return (
+            <div className="space-y-5">
+              {/* Resumen */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-card border border-border/60 rounded-2xl p-4 space-y-0.5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Facturado</p>
+                  <p className="text-xl font-bold">{fmt(account?.total_charges ?? 0)}</p>
+                </div>
+                <div className="bg-card border border-border/60 rounded-2xl p-4 space-y-0.5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cobrado</p>
+                  <p className="text-xl font-bold text-green-600">{fmt(account?.total_payments ?? 0)}</p>
+                </div>
+                <div className={`rounded-2xl p-4 space-y-0.5 border ${(account?.balance ?? 0) > 0 ? "bg-rose-50 border-rose-200" : "bg-green-50 border-green-200"}`}>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saldo</p>
+                  <p className={`text-xl font-bold ${(account?.balance ?? 0) > 0 ? "text-rose-600" : "text-green-600"}`}>{fmt(account?.balance ?? 0)}</p>
+                </div>
+              </div>
+
+              {/* Botón registrar pago */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowPaymentForm(v => !v)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg transition-all"
+                >
+                  <Plus className="h-4 w-4" /> Registrar pago
+                </button>
+              </div>
+
+              {/* Formulario de pago */}
+              {showPaymentForm && (
+                <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-4">
+                  <h4 className="font-semibold text-sm">Nuevo pago</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Fecha</label>
+                      <input type="date" value={paymentForm.date} onChange={e => setPaymentForm(p => ({ ...p, date: e.target.value }))}
+                        className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Monto ($)</label>
+                      <input type="number" min="0" value={paymentForm.amount} onChange={e => setPaymentForm(p => ({ ...p, amount: e.target.value }))}
+                        placeholder="0" className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Descripción</label>
+                      <input type="text" value={paymentForm.description} onChange={e => setPaymentForm(p => ({ ...p, description: e.target.value }))}
+                        className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setShowPaymentForm(false)} className="px-4 py-2 border rounded-xl text-sm hover:bg-muted/50 transition-colors">Cancelar</button>
+                    <button
+                      onClick={() => addPaymentMutation.mutate()}
+                      disabled={!paymentForm.amount || addPaymentMutation.isPending}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50"
+                    >
+                      {addPaymentMutation.isPending ? "Guardando..." : "Guardar pago"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tabla libro mayor */}
+              {rows.length === 0 ? (
+                <p className="text-center text-muted-foreground p-8 bg-muted/20 rounded-2xl border border-dashed border-border/60">Sin movimientos registrados.</p>
+              ) : (
+                <div className="rounded-2xl border border-border/60 overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold">Fecha</th>
+                        <th className="px-4 py-3 font-semibold">Detalle</th>
+                        <th className="px-4 py-3 font-semibold text-right">Debe</th>
+                        <th className="px-4 py-3 font-semibold text-right">Haber</th>
+                        <th className="px-4 py-3 font-semibold text-right">Saldo</th>
+                        <th className="px-4 py-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {rows.map((row, i) => (
+                        <tr key={i} className={`hover:bg-muted/40 transition-colors ${row.source === "payment" ? "bg-green-50/40" : ""}`}>
+                          <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.date}</td>
+                          <td className="px-4 py-3">
+                            <p className="font-medium">{row.description}</p>
+                            {row.professional_name && <p className="text-xs text-muted-foreground">{row.professional_name}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium">
+                            {row.source === "treatment" ? fmt(row.amount) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-green-600">
+                            {row.source === "payment" ? fmt(row.amount) : "—"}
+                          </td>
+                          <td className={`px-4 py-3 text-right font-bold ${row.running > 0 ? "text-rose-600" : "text-green-600"}`}>
+                            {fmt(row.running)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {row.source === "payment" && (
+                              <button
+                                onClick={() => { if (confirm("¿Eliminar este pago?")) deletePaymentMutation.mutate(row.id); }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* Modal: Tratamiento */}

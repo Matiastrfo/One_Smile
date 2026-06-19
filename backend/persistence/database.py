@@ -265,6 +265,20 @@ def init_db():
     if "arch_teeth" not in t_columns:
         cursor.execute("ALTER TABLE treatments ADD COLUMN arch_teeth TEXT")
 
+    # Tabla: pagos de pacientes (cuenta corriente)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS patient_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            professional_id INTEGER,
+            date TEXT NOT NULL,
+            amount REAL NOT NULL,
+            description TEXT NOT NULL DEFAULT 'Pago',
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    """)
+
     # Tabla: configuración de horarios por profesional
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS schedule_config (
