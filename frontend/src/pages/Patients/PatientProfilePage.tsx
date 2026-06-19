@@ -505,9 +505,9 @@ export function PatientProfilePage() {
               </button>
             </div>
 
-          </div>{/* fin columna izquierda */}
+          </div>
 
-          {/* Columna derecha — Imágenes */}
+          {/* Columna derecha */}
           <div className="w-80 shrink-0 space-y-4">
             {(() => {
               const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -605,8 +605,8 @@ export function PatientProfilePage() {
                 </div>
               );
             })()}
-          </div>{/* fin columna derecha */}
-          </div>{/* fin flex wrapper */}
+          </div>
+          </div>
         )}
 
         {/* TAB: Tratamientos */}
