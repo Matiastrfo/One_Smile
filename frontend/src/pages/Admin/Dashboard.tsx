@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert, Trash2, UserPlus, Users, Package, Pencil, X } from "lucide-react";
 import api from "../../api/axios";
@@ -9,9 +10,11 @@ interface Professional { id: number; email: string; role: string; name: string; 
 
 export function AdminDashboard() {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState("profesional");
   const [editingUser, setEditingUser] = useState<Professional | null>(null);
   const [editEmail, setEditEmail] = useState("");
   const [editPassword, setEditPassword] = useState("");
@@ -32,8 +35,8 @@ export function AdminDashboard() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin_users"] });
 
   const createMutation = useMutation({
-    mutationFn: async () => { const { data } = await api.post("/api/admin/users", { email, password, role: "profesional", name }); return data; },
-    onSuccess: () => { invalidate(); setEmail(""); setPassword(""); setName(""); alert("Profesional creado exitosamente"); },
+    mutationFn: async () => { const { data } = await api.post("/api/admin/users", { email, password, role, name }); return data; },
+    onSuccess: () => { invalidate(); setEmail(""); setPassword(""); setName(""); setRole("profesional"); alert("Usuario creado exitosamente"); },
     onError: (err: any) => alert(err.response?.data?.detail || "Error al crear profesional"),
   });
 
@@ -109,6 +112,14 @@ export function AdminDashboard() {
                   className="w-full bg-background border border-input rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Ej: Pass1234" />
               </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Rol</label>
+                <select value={role} onChange={(e) => setRole(e.target.value)}
+                  className="w-full bg-background border border-input rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="profesional">Profesional</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
               <button type="submit" disabled={createMutation.isPending}
                 className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-2.5 rounded-xl transition-all disabled:opacity-50 text-sm shadow-md shadow-primary/30">
                 Crear Credenciales
@@ -144,20 +155,18 @@ export function AdminDashboard() {
                             <p className="text-xs text-muted-foreground uppercase tracking-wider mt-0.5">{user.role === "admin" ? "Dueño" : user.role}</p>
                           </div>
                           <div className="flex items-center gap-1">
-                            {user.role !== "admin" && (
-                              <>
-                                <button onClick={() => openEdit(user)}
-                                  className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Editar">
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                                <button onClick={() => { if (window.confirm(`¿Eliminar acceso para ${user.email}?`)) deleteMutation.mutate(user.id); }}
-                                  className="p-2 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg transition-colors" title="Eliminar">
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </>
-                            )}
                             {user.role === "admin" && (
                               <span className="text-xs font-semibold text-primary bg-accent border border-primary/20 px-2.5 py-1 rounded-lg">Propietario</span>
+                            )}
+                            <button onClick={() => openEdit(user)}
+                              className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Editar">
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            {user.id !== currentUser?.id && (
+                              <button onClick={() => { if (window.confirm(`¿Eliminar acceso para ${user.email}?`)) deleteMutation.mutate(user.id); }}
+                                className="p-2 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg transition-colors" title="Eliminar">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             )}
                           </div>
                         </div>

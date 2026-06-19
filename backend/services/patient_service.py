@@ -2,6 +2,7 @@ from domain.patient import Patient
 from domain.treatment import Treatment
 from domain.medical_report import MedicalReport
 from domain.patient_report import PatientReport
+from domain.dental_piece import TreatmentType
 from persistence.patient_repository import PatientRepository
 from persistence.appointment_repository import AppointmentRepository
 from persistence.treatment_repository import TreatmentRepository
@@ -42,6 +43,37 @@ class PatientService:
 
     def update_treatment(self, treatment_id: int, treatment: Treatment) -> Treatment:
         return self.treatment_repo.update(treatment_id, treatment)
+
+    def delete_treatment(self, patient_id: int, treatment_id: int, odontogram_service=None) -> None:
+        treatment = self.treatment_repo.get_by_id(treatment_id)
+        self.treatment_repo.delete(treatment_id)
+
+        if not treatment or not treatment.tooth_number or not odontogram_service:
+            return
+
+        arch_types = {'PROTESIS_PARCIAL', 'PUENTE', 'PROTESIS'}
+
+        # Registros de arcada: el frontend ya resetea los dental_pieces via onArchUpdate
+        if treatment.odontogram_type in arch_types or treatment.arch_teeth:
+            return
+
+        tooth = treatment.tooth_number
+        remaining = self.treatment_repo.get_by_patient(patient_id)
+
+        # No resetear si el diente aún pertenece a una arcada activa (via arch_teeth)
+        still_in_arch = any(
+            t.arch_teeth and str(tooth) in t.arch_teeth.split(',')
+            for t in remaining
+        )
+        if still_in_arch:
+            return
+
+        # No resetear si quedan otros tratamientos directos para este diente
+        still_has_direct = any(t.tooth_number == tooth for t in remaining)
+        if still_has_direct:
+            return
+
+        odontogram_service.update_tooth(patient_id, tooth, TreatmentType.NONE, None, [])
         
     def add_medical_report(self, report: MedicalReport) -> MedicalReport:
         return self.medical_report_repo.insert(report)

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { FileText } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import Tooth from './Tooth';
 import { TreatmentPanel, TREATMENTS } from './TreatmentPanel';
 import type { SelectedTool } from './TreatmentPanel';
 import type { DentalPiece, TreatmentType, TreatmentColor, ToothFace } from '../../types';
-import { downloadOdontogramPdf } from '../../utils/odontogramPdf';
 
 const UPPER_RIGHT = [18, 17, 16, 15, 14, 13, 12, 11];
 const UPPER_LEFT  = [21, 22, 23, 24, 25, 26, 27, 28];
@@ -14,7 +13,6 @@ const LOWER_LEFT  = [31, 32, 33, 34, 35, 36, 37, 38];
 const UPPER_TEETH = [...UPPER_RIGHT, ...UPPER_LEFT];
 const LOWER_TEETH = [...LOWER_RIGHT, ...LOWER_LEFT];
 
-// Orden visual de izquierda a derecha en pantalla
 const UPPER_ORDER = [...UPPER_RIGHT, ...UPPER_LEFT];
 const LOWER_ORDER = [...LOWER_RIGHT, ...LOWER_LEFT];
 
@@ -23,8 +21,13 @@ type ToothUpdatePayload = { treatment_type: TreatmentType; color: TreatmentColor
 interface OdontogramProps {
   pieces: DentalPiece[];
   patientName: string;
+  treatments?: any[];
+  partialStart: number | null;
+  onSetPartialStart: (v: number | null) => void;
   onToothUpdate: (toothNumber: number, update: ToothUpdatePayload) => void;
   onArchUpdate: (toothNumbers: number[], update: ToothUpdatePayload) => void;
+  onAddOverlay?: (toothNumber: number, update: ToothUpdatePayload) => void;
+  onDeleteTreatment?: (treatmentId: number) => void;
 }
 
 const DEFAULT_TOOL: SelectedTool = { treatment_type: 'CARIES', color: 'BLUE' };
@@ -41,9 +44,11 @@ function getTeethRange(start: number, end: number, order: number[]): number[] {
   return order.slice(from, to + 1);
 }
 
-const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpdate, onArchUpdate }) => {
+const RANGE_TREATMENTS: TreatmentType[] = ['PROTESIS_PARCIAL', 'PUENTE'];
+
+const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partialStart, onSetPartialStart, onToothUpdate, onArchUpdate, onAddOverlay, onDeleteTreatment }) => {
   const [selectedTool, setSelectedTool] = useState<SelectedTool>(DEFAULT_TOOL);
-  const [partialStart, setPartialStart] = useState<number | null>(null);
+  const [toothModalNumber, setToothModalNumber] = useState<number | null>(null);
 
   const getPiece = (num: number): DentalPiece => (
     pieces.find(p => p.tooth_number === num) ?? {
@@ -51,6 +56,60 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
       treatment_type: 'NONE', color: null, faces: [],
     }
   );
+
+
+  const isInSameSegment = (a: number, b: number, type: TreatmentType): boolean => {
+    if (a === b) return true;
+    const archA = UPPER_TEETH.includes(a) ? 'upper' : 'lower';
+    const archB = UPPER_TEETH.includes(b) ? 'upper' : 'lower';
+    if (archA !== archB) return false;
+    const order = archA === 'upper' ? UPPER_ORDER : LOWER_ORDER;
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    if (ia === -1 || ib === -1) return false;
+    const [from, to] = ia < ib ? [ia, ib] : [ib, ia];
+    return order.slice(from, to + 1).every(n => getPiece(n).treatment_type === type);
+  };
+
+  const toothTreatments = toothModalNumber !== null
+    ? treatments.filter((t: any) => {
+        if (t.tooth_number === toothModalNumber) return true;
+        const archTeeth = t.arch_teeth;
+        if (archTeeth && archTeeth.split(',').map(Number).includes(toothModalNumber)) return true;
+        // Fallback para registros sin arch_teeth: solo incluir si el tooth_number está en el mismo segmento
+        const pieceType = getPiece(toothModalNumber).treatment_type;
+        const isArchType = RANGE_TREATMENTS.includes(pieceType) || pieceType === 'PROTESIS';
+        if (isArchType && t.odontogram_type === pieceType && isInSameSegment(t.tooth_number, toothModalNumber, pieceType)) return true;
+        return false;
+      })
+    : [];
+
+  const hasTreatment = (num: number) => {
+    if (getPiece(num).treatment_type !== 'NONE') return true;
+    return treatments.some((t: any) => {
+      if (t.tooth_number === num) return true;
+      const archTeeth = t.arch_teeth;
+      return archTeeth && archTeeth.split(',').map(Number).includes(num);
+    });
+  };
+
+  const getOverlays = (num: number) => {
+    const piece = getPiece(num);
+    const activeTreatment = piece.treatment_type;
+
+    return treatments
+      .filter((t: any) => {
+        if (t.tooth_number !== num) return false;
+        if (!t.odontogram_type || t.odontogram_type === 'NONE') return false;
+        // No duplicar el tratamiento activo
+        if (t.odontogram_type === activeTreatment) return false;
+        return true;
+      })
+      .map((t: any) => ({
+        treatment_type: t.odontogram_type as TreatmentType,
+        color: t.odontogram_color ?? null,
+        faces: (() => { try { return JSON.parse(t.odontogram_faces || '[]'); } catch { return []; } })(),
+      }));
+  };
 
   const archHasProtesis = (archTeeth: number[], type: TreatmentType) =>
     archTeeth.some(n => getPiece(n).treatment_type === type);
@@ -65,6 +124,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
     const { treatment_type: tool, color } = selectedTool;
 
     if (tool === 'NONE') {
+      onSetPartialStart(null);
       onToothUpdate(toothNumber, { treatment_type: 'NONE', color: null, faces: [] });
       return;
     }
@@ -88,32 +148,36 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
     // PROTESIS PARCIAL y PUENTE — selección de rango
     if (tool === 'PROTESIS_PARCIAL' || tool === 'PUENTE') {
       if (partialStart === null) {
-        setPartialStart(toothNumber);
+        onSetPartialStart(toothNumber);
         return;
       }
       if (partialStart === toothNumber) {
-        setPartialStart(null);
+        onSetPartialStart(null);
         return;
       }
       const startArch = UPPER_TEETH.includes(partialStart) ? 'upper' : 'lower';
       const clickArch = UPPER_TEETH.includes(toothNumber) ? 'upper' : 'lower';
       if (startArch !== clickArch) {
         // diente de otra arcada → reiniciar selección
-        setPartialStart(toothNumber);
+        onSetPartialStart(toothNumber);
         return;
       }
       const order = startArch === 'upper' ? UPPER_ORDER : LOWER_ORDER;
       const range = getTeethRange(partialStart, toothNumber, order);
       onArchUpdate(range, { treatment_type: tool, color, faces: [] });
-      setPartialStart(null);
+      onSetPartialStart(null);
       return;
     }
 
     // Tratamientos normales
     const cfg = TREATMENTS.find(t => t.type === (tool as any));
     const isFaceBased = cfg?.isFaceBased ?? false;
+    const isArchTreatment = RANGE_TREATMENTS.includes(piece.treatment_type) || piece.treatment_type === 'PROTESIS';
 
-    if (isFaceBased) {
+    if (isArchTreatment && onAddOverlay) {
+      // Diente con prótesis/puente → siempre overlay, nunca tocar treatment_type
+      onAddOverlay(toothNumber, { treatment_type: tool, color, faces: isFaceBased ? [face] : [] });
+    } else if (isFaceBased) {
       const sameToolAndColor = piece.treatment_type === tool && piece.color === color;
       const currentFaces: ToothFace[] = sameToolAndColor ? piece.faces : [];
       const newFaces = currentFaces.includes(face)
@@ -133,12 +197,11 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
   };
 
   const handleErase = (toothNumber: number) => {
-    onToothUpdate(toothNumber, { treatment_type: 'NONE', color: null, faces: [] });
+    setToothModalNumber(toothNumber);
   };
 
-  // Cambiar herramienta cancela selección parcial en curso
   const handleToolChange = (tool: SelectedTool) => {
-    setPartialStart(null);
+    onSetPartialStart(null);
     setSelectedTool(tool);
   };
 
@@ -149,10 +212,6 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
   const upperPuente  = archHasProtesis(UPPER_TEETH, 'PUENTE');
   const lowerPuente  = archHasProtesis(LOWER_TEETH, 'PUENTE');
 
-  const RANGE_TREATMENTS: TreatmentType[] = ['PROTESIS_PARCIAL', 'PUENTE'];
-
-  // Agrupa dientes contiguos del mismo tratamiento de rango en un único div con visual propio.
-  // Los demás usan display:contents para no romper el flex.
   const renderArch = (rightQ: number[], leftQ: number[]) => {
     const allTeeth = [...rightQ, ...leftQ];
     const separatorAt = rightQ.length;
@@ -186,7 +245,24 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
               {seg.startIdx + ti === separatorAt && (
                 <div className="w-px self-stretch bg-slate-300 dark:bg-slate-600 mx-1" />
               )}
-              <Tooth piece={getPiece(num)} onFaceClick={handleFaceClick} onErase={handleErase} isRangeStart={partialStart === num} />
+              <div key={num} className="flex flex-col items-center">
+                <Tooth piece={getPiece(num)} onFaceClick={handleFaceClick} onErase={handleErase} isRangeStart={
+  partialStart === num &&
+  getPiece(num).treatment_type === 'NONE' &&
+  (selectedTool.treatment_type === 'PROTESIS_PARCIAL' || selectedTool.treatment_type === 'PUENTE')
+} overlays={getOverlays(num)} />
+                <button
+                  onClick={() => setToothModalNumber(num)}
+                  className={`text-[9px] font-bold mt-0.5 w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                    hasTreatment(num)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                  title={`Ver tratamientos pieza ${num}`}
+                >
+                  {num}
+                </button>
+              </div>
             </React.Fragment>
           )) : null;
 
@@ -209,29 +285,48 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
                   {seg.startIdx + ti === separatorAt && (
                     <div className="w-px self-stretch bg-slate-300 dark:bg-slate-600 mx-1" />
                   )}
-                  <Tooth
-                    piece={getPiece(num)}
-                    onFaceClick={handleFaceClick}
-                    onErase={handleErase}
-                    isRangeStart={partialStart === num}
-                    puenteRole={role}
-                  />
+                  <div className="flex flex-col items-center">
+                    <Tooth
+                      piece={getPiece(num)}
+                      onFaceClick={handleFaceClick}
+                      onErase={handleErase}
+                      isRangeStart={
+  partialStart === num &&
+  getPiece(num).treatment_type === 'NONE' &&
+  (selectedTool.treatment_type === 'PROTESIS_PARCIAL' || selectedTool.treatment_type === 'PUENTE')
+}
+                      puenteRole={role}
+                      overlays={getOverlays(num)}
+                    />
+                    {/* Pata solo en pónticos (dientes del medio), no en pilares */}
+                    {ti !== 0 && ti !== last && (
+                      <div style={{ width: '4px', height: '24px', background: seg.color, flexShrink: 0, marginTop: '-24px' }} />
+                    )}
+                    <button
+                      onClick={() => setToothModalNumber(num)}
+                      style={{ marginTop: '4px' }}
+                      className={`text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                        hasTreatment(num)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  </div>
                 </React.Fragment>
               );
             });
 
             return (
-              <div key={si} className="flex gap-1"
-                style={{
-                  borderLeft:   `3px solid ${seg.color}`,
-                  borderBottom: `3px solid ${seg.color}`,
-                  borderRight:  `3px solid ${seg.color}`,
-                  borderRadius: '0 0 6px 6px',
-                  paddingLeft:  '2px',
-                  paddingRight: '2px',
-                  paddingBottom: '4px',
-                }}>
+              <div key={si} style={{ position: 'relative', display: 'flex', gap: '4px' }}>
                 {puenteInner}
+                {/* Barra horizontal — debajo de las patas, encima de los números */}
+                <div style={{ position: 'absolute', left: 0, right: 0, top: '100px', height: '4px', background: seg.color, pointerEvents: 'none' }} />
+                {/* Lado izquierdo */}
+                <div style={{ position: 'absolute', left: 0, top: '16px', width: '4px', height: '84px', background: seg.color, pointerEvents: 'none' }} />
+                {/* Lado derecho */}
+                <div style={{ position: 'absolute', right: 0, top: '16px', width: '4px', height: '84px', background: seg.color, pointerEvents: 'none' }} />
               </div>
             );
           }
@@ -248,22 +343,55 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
     (selectedTool.treatment_type === 'PUENTE'           && (upperPuente   || lowerPuente));
 
   return (
-    <div className="flex gap-4 items-start w-full">
+    <div className="flex gap-4 items-stretch w-full">
+      {/* Modal tratamientos del diente */}
+      {toothModalNumber !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setToothModalNumber(null)}>
+          <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">Pieza {toothModalNumber} — Tratamientos</h3>
+              <button onClick={() => setToothModalNumber(null)} className="p-1 rounded-lg hover:bg-muted transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {toothTreatments.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-4">No hay tratamientos registrados para esta pieza.</p>
+            ) : (
+              <div className="space-y-2">
+                {toothTreatments.map((t: any) => (
+                  <div key={t.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border/60 bg-muted/30">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {(() => {
+                          const pt = toothModalNumber !== null ? getPiece(toothModalNumber).treatment_type : 'NONE';
+                          const isArch = RANGE_TREATMENTS.includes(pt) || pt === 'PROTESIS';
+                          return isArch && t.odontogram_type === pt
+                            ? `${t.description.split(' - ')[0]} - Pieza ${toothModalNumber}`
+                            : t.description;
+                        })()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{t.date_time} · ${t.price?.toFixed(2)}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onDeleteTreatment?.(t.id);
+                      }}
+                      className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* Panel izquierdo */}
       <TreatmentPanel selected={selectedTool} onChange={handleToolChange} />
 
       {/* Odontograma */}
       <div className="flex-1 flex flex-col items-center gap-10 py-6 px-4 bg-card rounded-2xl border border-border/60 shadow-sm relative">
-
-        {/* Botón PDF */}
-        <button
-          onClick={() => downloadOdontogramPdf(patientName, pieces)}
-          className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors text-foreground"
-          title="Generar informe PDF"
-        >
-          <FileText className="h-3.5 w-3.5" />
-          Informe PDF
-        </button>
 
         {/* Indicador de selección parcial en curso */}
         {(selectedTool.treatment_type === 'PROTESIS_PARCIAL' || selectedTool.treatment_type === 'PUENTE') && (
@@ -309,6 +437,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
                   const type = selectedTool.treatment_type as TreatmentType;
                   const teeth = pieces.filter(p => UPPER_TEETH.includes(p.tooth_number) && p.treatment_type === type).map(p => p.tooth_number);
                   onArchUpdate(teeth, { treatment_type: 'NONE', color: null, faces: [] });
+                  onSetPartialStart(null);
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors"
               >
@@ -321,6 +450,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, patientName, onToothUpd
                   const type = selectedTool.treatment_type as TreatmentType;
                   const teeth = pieces.filter(p => LOWER_TEETH.includes(p.tooth_number) && p.treatment_type === type).map(p => p.tooth_number);
                   onArchUpdate(teeth, { treatment_type: 'NONE', color: null, faces: [] });
+                  onSetPartialStart(null);
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors"
               >

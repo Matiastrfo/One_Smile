@@ -19,19 +19,59 @@ const FACE_PATHS: { face: ToothFace; points: string }[] = [
   { face: 'center', points: '25,25 75,25 75,75 25,75' },
 ];
 
+interface TreatmentOverlay {
+  treatment_type: TreatmentType;
+  color: string | null;
+  faces: string[];
+}
+
 interface ToothProps {
   piece: DentalPiece;
   onFaceClick: (toothNumber: number, face: ToothFace) => void;
   onErase: (toothNumber: number) => void;
   isRangeStart?: boolean;
   puenteRole?: 'abutment' | 'pontic';
+  overlays?: TreatmentOverlay[];
 }
 
-export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = false, puenteRole }: ToothProps) {
+function renderOverlaySvg(type: TreatmentType, color: string | null, faces: string[], puenteRole?: 'abutment' | 'pontic') {
+  const c = color ? COLOR_HEX[color] ?? color : '#000';
+  switch (type) {
+    case 'CROWN':
+      return <rect x="3" y="3" width="94" height="94" fill="none" stroke={c} strokeWidth="9" />;
+    case 'EXTRACTION_PENDING':
+      return <><line x1="12" y1="35" x2="88" y2="35" stroke={c} strokeWidth="10" strokeLinecap="round" /><line x1="12" y1="65" x2="88" y2="65" stroke={c} strokeWidth="10" strokeLinecap="round" /></>;
+    case 'EXTRACTED':
+    case 'PROTESIS':
+    case 'PROTESIS_PARCIAL':
+      return <><line x1="12" y1="12" x2="88" y2="88" stroke={c} strokeWidth="10" strokeLinecap="round" /><line x1="88" y1="12" x2="12" y2="88" stroke={c} strokeWidth="10" strokeLinecap="round" /></>;
+    case 'IMPLANT':
+      return <rect x="25" y="25" width="50" height="50" fill="none" stroke={c} strokeWidth="8" />;
+    case 'PERNO':
+      return <line x1="50" y1="8" x2="50" y2="92" stroke={c} strokeWidth="9" strokeLinecap="round" />;
+    case 'ABSENT':
+      return <text x="50" y="75" textAnchor="middle" fill={c} fontSize="72" fontWeight="900" fontFamily="Arial, sans-serif" style={{ pointerEvents: 'none' }}>A</text>;
+    case 'RX':
+    case 'ENDODONCIA':
+      return null; // se renderizan como label debajo del diente
+    case 'PUENTE':
+      if (puenteRole === 'abutment') return <rect x="3" y="3" width="94" height="94" fill="none" stroke={c} strokeWidth="9" />;
+      return <><rect x="3" y="3" width="94" height="94" fill="none" stroke={c} strokeWidth="9" /><line x1="12" y1="12" x2="88" y2="88" stroke={c} strokeWidth="10" strokeLinecap="round" /><line x1="88" y1="12" x2="12" y2="88" stroke={c} strokeWidth="10" strokeLinecap="round" /></>;
+    case 'CARIES':
+    case 'FILLING':
+      return <>
+        {FACE_PATHS.filter(fp => faces.includes(fp.face)).map(fp => (
+          <polygon key={fp.face} points={fp.points} fill={c} opacity={0.7} />
+        ))}
+      </>;
+    default:
+      return null;
+  }
+}
+
+export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = false, puenteRole, overlays = [] }: ToothProps) {
   const { tooth_number, treatment_type, color, faces } = piece;
   const overlayColor = color ? COLOR_HEX[color] : '#000';
-  const isWholeTooth = WHOLE_TOOTH_TREATMENTS.includes(treatment_type);
-
   const getFaceColor = (face: ToothFace): string => {
     if (faces.includes(face) && color) return COLOR_HEX[color];
     return '#ffffff';
@@ -44,7 +84,6 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
       <span className="text-xs font-semibold mb-1 text-muted-foreground leading-none">{tooth_number}</span>
       <div
         className="relative w-16 h-16 cursor-pointer"
-        onClick={() => isWholeTooth && onFaceClick(tooth_number, 'center')}
         onContextMenu={e => { e.preventDefault(); onErase(tooth_number); }}
       >
         <svg
@@ -156,21 +195,18 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
               className="cursor-pointer" onClick={() => onFaceClick(tooth_number, 'center')} />
           )}
 
-          {/* Hover overlay for whole-tooth treatments — invisible clickable rect */}
-          {isWholeTooth && (
-            <rect
-              x="0" y="0" width="100" height="100"
-              fill="transparent"
-              stroke="none"
-              className="cursor-pointer"
-              onClick={() => onFaceClick(tooth_number, 'center')}
-            />
-          )}
+
+          {/* Overlays: additional treatments stored in treatments table */}
+          {overlays.map((ov, i) => (
+            <g key={i} style={{ pointerEvents: 'none' }}>
+              {renderOverlaySvg(ov.treatment_type, ov.color, ov.faces, puenteRole)}
+            </g>
+          ))}
         </svg>
       </div>
 
-      {/* Espacio reservado para labels — altura fija para no desalinear dientes */}
-      <div className="h-5 flex items-center justify-center mt-1">
+      {/* Labels debajo del diente: primario + overlays RX/TC */}
+      <div className="h-5 flex items-center justify-center gap-1 mt-1">
         {treatment_type === 'RX' && (
           <span className="text-sm font-black leading-none cursor-pointer"
             style={{ color: overlayColor }}
@@ -181,6 +217,14 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
             style={{ color: overlayColor }}
             onClick={() => onFaceClick(tooth_number, 'center')}>TC</span>
         )}
+        {overlays.filter(ov => ov.treatment_type === 'RX' || ov.treatment_type === 'ENDODONCIA').map((ov, i) => {
+          const c = ov.color ? COLOR_HEX[ov.color] ?? ov.color : '#000';
+          return (
+            <span key={i} className="text-sm font-black leading-none" style={{ color: c }}>
+              {ov.treatment_type === 'RX' ? 'RX' : 'TC'}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

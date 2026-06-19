@@ -5,7 +5,7 @@ from persistence.database import get_connection
 _SELECT = """
     SELECT c.id, c.professional_id, c.box_id, c.shift, c.day_of_week,
            c.start_month_year, c.duration_months, c.status, c.previous_contract_id,
-           u.email, b.name,
+           COALESCE(NULLIF(u.name,''), u.email), b.name,
            (SELECT COUNT(id) FROM box_payments WHERE contract_id = c.id)
     FROM contracts c
     JOIN users u ON c.professional_id = u.id

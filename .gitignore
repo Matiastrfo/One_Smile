@@ -24,8 +24,10 @@ frontend/dist-ssr/
 frontend/*.local
 frontend/.npm/
 
-# Variables de entorno
+# Variables de entorno y secretos
 .env
+backend/.jwt_secret
+uploads/
 .env.local
 .env.development.local
 .env.test.local

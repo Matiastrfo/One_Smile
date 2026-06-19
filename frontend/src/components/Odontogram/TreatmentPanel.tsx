@@ -58,7 +58,7 @@ export function TreatmentPanel({ selected, onChange }: TreatmentPanelProps) {
   const availableColors = currentConfig?.colors ?? (['BLUE', 'RED', 'GREEN'] as TreatmentColor[]);
 
   return (
-    <div className="flex flex-col bg-card border border-border/60 rounded-2xl shadow-sm w-44 shrink-0 overflow-hidden">
+    <div className="flex flex-col bg-card border border-border/60 rounded-2xl shadow-sm w-44 shrink-0 overflow-hidden h-full">
 
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-border/60 bg-muted/30">
@@ -115,19 +115,6 @@ export function TreatmentPanel({ selected, onChange }: TreatmentPanelProps) {
         })}
       </div>
 
-      {/* Eraser */}
-      <div className="border-t border-border/60">
-        <button
-          onClick={() => onChange({ treatment_type: 'NONE', color: 'BLUE' })}
-          className={`w-full text-left px-3 py-2.5 text-xs font-medium transition-all flex items-center gap-2 ${
-            selected.treatment_type === 'NONE'
-              ? 'bg-muted text-foreground font-semibold'
-              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-          }`}
-        >
-          <span className="text-base leading-none">🧹</span> Borrador
-        </button>
-      </div>
     </div>
   );
 }

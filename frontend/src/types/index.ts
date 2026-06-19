@@ -3,6 +3,11 @@ export interface Patient {
   name: string;
   dni: string;
   phone?: string;
+  blood_type?: string;
+  allergies?: string;
+  diseases?: string;
+  medications?: string;
+  observations?: string;
 }
 
 export interface Appointment {
@@ -23,6 +28,10 @@ export interface Treatment {
   description: string;
   price: number;
   tooth_number?: number;
+  arch_teeth?: string;
+  odontogram_type?: string;
+  odontogram_color?: string;
+  odontogram_faces?: string;
 }
 
 export interface MedicalReport {

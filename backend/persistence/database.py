@@ -232,17 +232,56 @@ def init_db():
                 (contract_id, box_id, shift, prof_id)
             )
 
-    # Migración: agregar columna phone a patients si no existe
+    # Migración: agregar columna phone y campos de historia clínica a patients si no existen
     cursor.execute("PRAGMA table_info(patients)")
     patient_columns = [row[1] for row in cursor.fetchall()]
     if "phone" not in patient_columns:
         cursor.execute("ALTER TABLE patients ADD COLUMN phone TEXT")
+    if "blood_type" not in patient_columns:
+        cursor.execute("ALTER TABLE patients ADD COLUMN blood_type TEXT")
+    if "allergies" not in patient_columns:
+        cursor.execute("ALTER TABLE patients ADD COLUMN allergies TEXT")
+    if "diseases" not in patient_columns:
+        cursor.execute("ALTER TABLE patients ADD COLUMN diseases TEXT")
+    if "medications" not in patient_columns:
+        cursor.execute("ALTER TABLE patients ADD COLUMN medications TEXT")
+    if "observations" not in patient_columns:
+        cursor.execute("ALTER TABLE patients ADD COLUMN observations TEXT")
 
-    # Migración: agregar columna name a users si no existe
+    # Migración: agregar columnas name y avatar_path a users si no existen
     cursor.execute("PRAGMA table_info(users)")
     user_columns = [row[1] for row in cursor.fetchall()]
     if "name" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+    if "avatar_path" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN avatar_path TEXT")
+
+    # Migración: agregar columna odontogram_type a treatments si no existe
+    cursor.execute("PRAGMA table_info(treatments)")
+    t_columns = [row[1] for row in cursor.fetchall()]
+    if "odontogram_type" not in t_columns:
+        cursor.execute("ALTER TABLE treatments ADD COLUMN odontogram_type TEXT")
+    if "odontogram_color" not in t_columns:
+        cursor.execute("ALTER TABLE treatments ADD COLUMN odontogram_color TEXT")
+    if "odontogram_faces" not in t_columns:
+        cursor.execute("ALTER TABLE treatments ADD COLUMN odontogram_faces TEXT")
+    if "arch_teeth" not in t_columns:
+        cursor.execute("ALTER TABLE treatments ADD COLUMN arch_teeth TEXT")
+
+    # Tabla: configuración de horarios por profesional
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS schedule_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            professional_id INTEGER NOT NULL,
+            day_of_week TEXT NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 0,
+            start_time TEXT NOT NULL DEFAULT '09:00',
+            end_time TEXT NOT NULL DEFAULT '18:00',
+            slot_duration INTEGER NOT NULL DEFAULT 60,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(professional_id, day_of_week)
+        )
+    """)
 
     # Seed de admin por defecto
     # El password '12345' hasheado con bcrypt (usaremos un hash pre-generado de '12345' para simplicidad y consistencia en init_db)

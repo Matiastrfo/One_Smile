@@ -1,7 +1,7 @@
 {
   "name": "one-smile",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.11",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -14,7 +14,7 @@
   },
   "build": {
     "appId": "com.trifiro.onesmile",
-    "productName": "ONE Smile",
+    "productName": "ONESmile",
     "directories": {
       "output": "../dist-electron"
     },
@@ -45,14 +45,15 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "src/assets/logo.ico"
+      "icon": "src/assets/logo.ico",
+      "artifactName": "ONESmile-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ONE Smile"
+      "shortcutName": "ONESmile"
     }
   },
   "dependencies": {
@@ -60,6 +61,7 @@
     "@tanstack/react-query": "^5.100.11",
     "axios": "^1.16.1",
     "clsx": "^2.1.1",
+    "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.16.0",

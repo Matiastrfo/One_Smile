@@ -30,29 +30,29 @@ class PatientRepository:
             params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        cursor.execute(f"SELECT id, name, dni, phone, professional_id FROM patients {where}", params)
+        cursor.execute(f"SELECT id, name, dni, phone, professional_id, blood_type, allergies, diseases, medications, observations FROM patients {where}", params)
 
         rows = cursor.fetchall()
         conn.close()
-        return [Patient(id=row[0], name=row[1], dni=row[2], phone=row[3], professional_id=row[4]) for row in rows]
+        return [Patient(id=r[0], name=r[1], dni=r[2], phone=r[3], professional_id=r[4], blood_type=r[5], allergies=r[6], diseases=r[7], medications=r[8], observations=r[9]) for r in rows]
 
     def get_by_id(self, patient_id: int) -> Patient | None:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, dni, phone, professional_id FROM patients WHERE id = ?", (patient_id,))
+        cursor.execute("SELECT id, name, dni, phone, professional_id, blood_type, allergies, diseases, medications, observations FROM patients WHERE id = ?", (patient_id,))
         row = cursor.fetchone()
         conn.close()
 
         if row:
-            return Patient(id=row[0], name=row[1], dni=row[2], phone=row[3], professional_id=row[4])
+            return Patient(id=row[0], name=row[1], dni=row[2], phone=row[3], professional_id=row[4], blood_type=row[5], allergies=row[6], diseases=row[7], medications=row[8], observations=row[9])
         return None
 
     def update(self, patient: Patient) -> None:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE patients SET name = ?, dni = ?, phone = ? WHERE id = ?",
-            (patient.name, patient.dni, patient.phone, patient.id)
+            "UPDATE patients SET name = ?, dni = ?, phone = ?, blood_type = ?, allergies = ?, diseases = ?, medications = ?, observations = ? WHERE id = ?",
+            (patient.name, patient.dni, patient.phone, patient.blood_type, patient.allergies, patient.diseases, patient.medications, patient.observations, patient.id)
         )
         conn.commit()
         conn.close()

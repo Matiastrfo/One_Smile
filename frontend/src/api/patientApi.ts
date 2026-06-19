@@ -36,6 +36,10 @@ export const updateTreatment = async (patientId: number, treatmentId: number, tr
   return data;
 };
 
+export const deleteTreatment = async (patientId: number, treatmentId: number): Promise<void> => {
+  await api.delete(`/patients/${patientId}/treatments/${treatmentId}`);
+};
+
 export const addMedicalReport = async (patientId: number, report: any): Promise<any> => {
   const { data } = await api.post(`/patients/${patientId}/medical-reports`, { ...report, patient_id: patientId });
   return data;

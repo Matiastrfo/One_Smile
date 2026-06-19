@@ -42,6 +42,11 @@ def update_treatment(patient_id: int, treatment_id: int, treatment: Treatment, c
     treatment.patient_id = patient_id
     return patient_service.update_treatment(treatment_id, treatment)
 
+@router.delete("/{patient_id}/treatments/{treatment_id}")
+def delete_treatment(patient_id: int, treatment_id: int, current_user: User = Depends(get_current_user)):
+    patient_service.delete_treatment(patient_id, treatment_id, odontogram_service)
+    return {"message": "Tratamiento eliminado"}
+
 @router.post("/{patient_id}/medical-reports", response_model=MedicalReport)
 def add_medical_report(patient_id: int, report: MedicalReport, current_user: User = Depends(get_current_user)):
     report.patient_id = patient_id

@@ -1,16 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { getAppointments, deleteAppointment, updateAppointmentStatus, quickCreateAppointment, createAppointment } from "../../api/appointmentApi";
+import { Calendar as CalendarIcon, Settings } from "lucide-react";
+import { getAppointments, deleteAppointment, updateAppointmentStatus, createAppointment, quickCreateAppointment } from "../../api/appointmentApi";
 import { getPatients } from "../../api/patientApi";
+import { getScheduleConfig, saveScheduleConfig } from "../../api/scheduleConfigApi";
 import { MonthCalendar } from "./components/MonthCalendar";
 import { DayPanel } from "./components/DayPanel";
 import { QuickAppointmentModal } from "./components/QuickAppointmentModal";
+import { ScheduleConfigModal } from "./components/ScheduleConfigModal";
+import { SlotPickerModal } from "./components/SlotPickerModal";
+
+const DAY_MAP: Record<number, string> = {
+  0: "SUNDAY", 1: "MONDAY", 2: "TUESDAY", 3: "WEDNESDAY",
+  4: "THURSDAY", 5: "FRIDAY", 6: "SATURDAY",
+};
 
 export function AppointmentsPage() {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [showQuickModal, setShowQuickModal] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [preselectedPatientId, setPreselectedPatientId] = useState<number | null>(
+    (location.state as any)?.preselectedPatientId ?? null
+  );
+
+  useEffect(() => {
+    if (preselectedPatientId !== null) {
+      setShowQuickModal(true);
+      window.history.replaceState({}, '');
+    }
+  }, []);
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments"],
@@ -22,10 +43,22 @@ export function AppointmentsPage() {
     queryFn: () => getPatients(),
   });
 
+  const { data: scheduleConfig } = useQuery({
+    queryKey: ["scheduleConfig"],
+    queryFn: getScheduleConfig,
+  });
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
     queryClient.invalidateQueries({ queryKey: ["patients"] });
   };
+
+  const appointmentMutation = useMutation({
+    mutationFn: (body: { patient_id: number; date_time: string; reason: string }) =>
+      createAppointment({ patient_id: body.patient_id, date_time: body.date_time, reason: body.reason } as any),
+    onSuccess: () => { invalidate(); setShowQuickModal(false); },
+    onError: (error: any) => alert(error.response?.data?.detail || "Error al agendar"),
+  });
 
   const quickMutation = useMutation({
     mutationFn: quickCreateAppointment,
@@ -33,11 +66,13 @@ export function AppointmentsPage() {
     onError: (error: any) => alert(error.response?.data?.detail || "Error al agendar"),
   });
 
-  const existingMutation = useMutation({
-    mutationFn: (body: { patient_id: number; date_time: string; reason: string }) =>
-      createAppointment({ patient_id: body.patient_id, date_time: body.date_time, reason: body.reason } as any),
-    onSuccess: () => { invalidate(); setShowQuickModal(false); },
-    onError: (error: any) => alert(error.response?.data?.detail || "Error al agendar"),
+  const configMutation = useMutation({
+    mutationFn: saveScheduleConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scheduleConfig"] });
+      setShowConfigModal(false);
+    },
+    onError: () => alert("Error al guardar la configuración"),
   });
 
   const deleteMutation = useMutation({
@@ -60,7 +95,6 @@ export function AppointmentsPage() {
     if (window.confirm("¿Cancelar este turno?")) deleteMutation.mutate(id);
   };
 
-  // Turnos del día seleccionado
   const apptsBySelectedDay = selectedDate
     ? appointments.filter(a => {
         const [y, m, d] = a.date_time.split(" ")[0].split("-").map(Number);
@@ -68,16 +102,31 @@ export function AppointmentsPage() {
       })
     : [];
 
+  // Determina si el día seleccionado tiene una grilla configurada
+  const selectedDayKey = selectedDate ? DAY_MAP[selectedDate.getDay()] : null;
+  const selectedDaySchedule = scheduleConfig?.days.find(d => d.day_of_week === selectedDayKey && d.enabled);
+  const useSlotPicker = !!selectedDaySchedule;
+
+  const handleAddClick = () => setShowQuickModal(true);
+
   return (
     <main className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
       <header className="flex items-center gap-4 border-b pb-4">
         <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-xl bg-accent text-primary shrink-0">
           <CalendarIcon className="h-6 w-6" />
         </div>
-        <div>
+        <div className="flex-1">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Agenda de Turnos</h2>
           <p className="text-muted-foreground mt-1 text-sm">Gestioná las citas programadas de los pacientes.</p>
         </div>
+        <button
+          onClick={() => setShowConfigModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border/60 bg-muted/40 hover:bg-muted transition-colors text-sm font-medium"
+          title="Configurar horarios"
+        >
+          <Settings className="h-4 w-4" />
+          <span className="hidden sm:inline">Configurar horarios</span>
+        </button>
       </header>
 
       {isLoading ? (
@@ -99,7 +148,7 @@ export function AppointmentsPage() {
                 date={selectedDate}
                 appointments={apptsBySelectedDay}
                 getPatientName={getPatientName}
-                onAdd={() => setShowQuickModal(true)}
+                onAdd={handleAddClick}
                 onDelete={handleDelete}
                 onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
               />
@@ -113,14 +162,44 @@ export function AppointmentsPage() {
         </div>
       )}
 
-      {showQuickModal && selectedDate && (
+      {/* Modal grilla de slots (cuando el día tiene horarios configurados) */}
+      {showQuickModal && selectedDate && useSlotPicker && (
+        <SlotPickerModal
+          date={selectedDate}
+          daySchedule={selectedDaySchedule!}
+          patients={patients}
+          appointments={apptsBySelectedDay}
+          allAppointments={appointments}
+          scheduleConfig={scheduleConfig}
+          preselectedPatientId={preselectedPatientId}
+          onClose={() => { setShowQuickModal(false); setPreselectedPatientId(null); }}
+          onDateChange={setSelectedDate}
+          onSubmit={appointmentMutation.mutate}
+          onSubmitNew={quickMutation.mutate}
+          isPending={appointmentMutation.isPending || quickMutation.isPending}
+        />
+      )}
+
+      {/* Modal libre (cuando el día NO tiene horarios configurados) */}
+      {showQuickModal && selectedDate && !useSlotPicker && (
         <QuickAppointmentModal
           date={selectedDate}
           patients={patients}
-          onClose={() => setShowQuickModal(false)}
-          onSubmitNew={quickMutation.mutate}
-          onSubmitExisting={existingMutation.mutate}
-          isPending={quickMutation.isPending || existingMutation.isPending}
+          preselectedPatientId={preselectedPatientId}
+          onClose={() => { setShowQuickModal(false); setPreselectedPatientId(null); }}
+          onSubmitNew={() => {}}
+          onSubmitExisting={appointmentMutation.mutate}
+          isPending={appointmentMutation.isPending}
+        />
+      )}
+
+      {/* Modal configuración de horarios */}
+      {showConfigModal && scheduleConfig && (
+        <ScheduleConfigModal
+          config={scheduleConfig}
+          onClose={() => setShowConfigModal(false)}
+          onSave={configMutation.mutate}
+          isPending={configMutation.isPending}
         />
       )}
     </main>

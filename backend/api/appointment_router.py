@@ -31,9 +31,15 @@ def create_appointment(appointment: Appointment, current_user: User = Depends(ge
 def get_appointments(current_user: User = Depends(get_current_user)):
     return appointment_service.get_appointments_by_professional(current_user.id)
 
+VALID_STATUSES = {"PENDING", "ATTENDED", "ABSENT", "CANCELLED"}
+
 @router.delete("/{appointment_id}")
 def delete_appointment(appointment_id: int, current_user: User = Depends(get_current_user)):
-    # Assuming delete applies to current user's appointment (service validation could be added later)
+    appt = appointment_service.repository.get_by_id(appointment_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    if appt.professional_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
     appointment_service.delete_appointment(appointment_id)
     return {"message": "Turno eliminado"}
 
@@ -53,8 +59,15 @@ class StatusUpdateRequest(BaseModel):
 
 @router.patch("/{appointment_id}/status")
 def update_appointment_status(appointment_id: int, request: StatusUpdateRequest, current_user: User = Depends(get_current_user)):
+    if request.status not in VALID_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Estado inválido. Opciones: {', '.join(VALID_STATUSES)}")
+    appt = appointment_service.repository.get_by_id(appointment_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    if appt.professional_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
     try:
         appointment_service.update_appointment_status(appointment_id, request.status)
-        return {"message": "Status updated successfully"}
+        return {"message": "Estado actualizado"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

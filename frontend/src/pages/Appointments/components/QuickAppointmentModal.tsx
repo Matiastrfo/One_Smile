@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, CalendarPlus, UserPlus, Users, Search } from "lucide-react";
 import type { Patient } from "../../../types";
 
 interface QuickAppointmentModalProps {
   date: Date;
   patients: Patient[];
+  preselectedPatientId?: number | null;
   onClose: () => void;
   onSubmitNew: (data: { patient_name: string; patient_phone?: string; date_time: string; reason?: string }) => void;
   onSubmitExisting: (data: { patient_id: number; date_time: string; reason: string }) => void;
@@ -13,11 +14,16 @@ interface QuickAppointmentModalProps {
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 
-export function QuickAppointmentModal({ date, patients, onClose, onSubmitNew, onSubmitExisting, isPending }: QuickAppointmentModalProps) {
+export function QuickAppointmentModal({ date, patients, preselectedPatientId, onClose, onSubmitNew, onSubmitExisting, isPending }: QuickAppointmentModalProps) {
+  useEffect(() => {
+    return () => { (document.activeElement as HTMLElement)?.blur(); document.body.focus(); };
+  }, []);
+
   const defaultDate = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [search, setSearch] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const preselected = preselectedPatientId ? (patients.find(p => p.id === preselectedPatientId) ?? null) : null;
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(preselected);
   const [patientName, setPatientName] = useState("");
   const [patientPhone, setPatientPhone] = useState("");
   const [apptDate, setApptDate] = useState(defaultDate);
@@ -90,7 +96,6 @@ export function QuickAppointmentModal({ date, patients, onClose, onSubmitNew, on
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <input
                   type="text"
-                  autoFocus
                   value={search}
                   onChange={e => { setSearch(e.target.value); setSelectedPatient(null); }}
                   placeholder="Nombre o DNI..."
@@ -134,7 +139,6 @@ export function QuickAppointmentModal({ date, patients, onClose, onSubmitNew, on
                 <input
                   type="text"
                   required
-                  autoFocus
                   value={patientName}
                   onChange={e => setPatientName(e.target.value)}
                   placeholder="Ej: Juan García"

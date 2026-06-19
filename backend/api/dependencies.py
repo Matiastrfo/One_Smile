@@ -15,20 +15,20 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
+        sub: str = payload.get("sub")
         role: str = payload.get("role")
-        if email is None:
+        if sub is None:
             raise credentials_exception
-        token_data = TokenData(email=email, role=role)
-    except JWTError:
+        token_data = TokenData(user_id=int(sub), role=role)
+    except (JWTError, ValueError):
         raise credentials_exception
 
     user_repo = UserRepository()
-    user_in_db = user_repo.get_by_email(email=token_data.email)
+    user_in_db = user_repo.get_by_id(token_data.user_id)
     if user_in_db is None:
         raise credentials_exception
-        
-    return User(id=user_in_db.id, email=user_in_db.email, role=user_in_db.role)
+
+    return User(id=user_in_db.id, email=user_in_db.email, role=user_in_db.role, name=user_in_db.name)
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":

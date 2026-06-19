@@ -109,7 +109,9 @@ def transfer_contract(contract_id: int, body: TransferRequest, current_user: Use
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        import logging
+        logging.getLogger(__name__).error(f"Contract transfer error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error al procesar la transferencia. Contacte al administrador.")
     finally:
         conn.close()
 

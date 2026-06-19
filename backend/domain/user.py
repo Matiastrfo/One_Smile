@@ -6,6 +6,7 @@ class User(BaseModel):
     email: EmailStr
     role: str
     name: str = ""
+    avatar_path: Optional[str] = None
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -21,7 +22,9 @@ class Token(BaseModel):
     token_type: str
     role: str
     name: str = ""
+    email: str = ""
+    id: Optional[int] = None
 
 class TokenData(BaseModel):
-    email: Optional[str] = None
+    user_id: Optional[int] = None
     role: Optional[str] = None

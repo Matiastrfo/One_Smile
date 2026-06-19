@@ -23,9 +23,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const storedRole = sessionStorage.getItem("role");
-    const storedEmail = sessionStorage.getItem("email");
+    const storedEmail = sessionStorage.getItem("email") ?? "";
     const storedName = sessionStorage.getItem("name") ?? "";
-    if (token && storedRole && storedEmail && !user) {
+    if (token && storedRole && !user) {
       setUser({ id: 0, email: storedEmail, role: storedRole, name: storedName });
     }
   }, [token, user]);

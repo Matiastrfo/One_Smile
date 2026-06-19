@@ -18,7 +18,7 @@ class MedicalReportRepository:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT m.id, m.patient_id, m.professional_id, m.date_time, m.description, u.email 
+            SELECT m.id, m.patient_id, m.professional_id, m.date_time, m.description, COALESCE(NULLIF(u.name,''), u.email)
             FROM medical_reports m
             LEFT JOIN users u ON m.professional_id = u.id
             WHERE m.patient_id = ?

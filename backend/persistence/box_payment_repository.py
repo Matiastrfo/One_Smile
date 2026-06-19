@@ -4,7 +4,7 @@ from persistence.database import get_connection
 
 SELECT_FIELDS = """
     SELECT p.id, p.professional_id, p.box_id, p.shift, p.month_year, p.status, p.payment_date, p.amount, p.notes,
-           u.email as professional_email, b.name as box_name, c.duration_months, p.contract_id
+           COALESCE(NULLIF(u.name,''), u.email) as professional_email, b.name as box_name, c.duration_months, p.contract_id
     FROM box_payments p
     JOIN users u ON p.professional_id = u.id
     JOIN boxes b ON p.box_id = b.id

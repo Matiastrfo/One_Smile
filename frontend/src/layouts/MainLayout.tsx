@@ -1,14 +1,54 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard } from "lucide-react";
+import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import logo from "../assets/logo.png";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getMyProfile, uploadAvatar, updateMyName } from "../api/profileApi";
+import logoSidebar from "../assets/logo-sidebar.png.png";
 import { TodayBanner } from "../components/TodayBanner";
 
 export function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
   const location = useLocation();
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: profile } = useQuery({
+    queryKey: ["myProfile"],
+    queryFn: getMyProfile,
+  });
+
+  const avatarMutation = useMutation({
+    mutationFn: uploadAvatar,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["myProfile"] }),
+    onError: () => alert("Error al subir la foto"),
+  });
+
+  const nameMutation = useMutation({
+    mutationFn: updateMyName,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+      setEditingName(false);
+    },
+    onError: () => alert("Error al actualizar el nombre"),
+  });
+
+  const handleNameEdit = () => {
+    setNameInput(profile?.name || "");
+    setEditingName(true);
+  };
+
+  const handleNameSave = () => {
+    if (nameInput.trim()) nameMutation.mutate(nameInput.trim());
+  };
+
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const avatarUrl = profile?.avatar_path
+    ? `${API_BASE}${profile.avatar_path}`
+    : null;
 
   const navLinks = [
     { to: "/appointments", icon: CalendarDays, label: "Agenda / Turnos" },
@@ -39,8 +79,11 @@ export function MainLayout() {
           md:relative md:translate-x-0
         `}
       >
-        <div className="p-4 border-b flex justify-between items-center">
-          <img src={logo} alt="OneSmile" className="h-36 w-auto flex-1 object-contain" />
+        <div className="px-3 py-4 border-b flex justify-between items-center">
+          <div className="flex-1 flex flex-col items-center gap-1">
+            <img src={logoSidebar} alt="OneSmile" className="h-32 w-auto object-contain" />
+            <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-muted-foreground">Odontología Trifiro</span>
+          </div>
           <button
             className="md:hidden p-1 text-muted-foreground hover:bg-muted rounded-md"
             onClick={() => setIsSidebarOpen(false)}
@@ -82,12 +125,57 @@ export function MainLayout() {
         </nav>
 
         <div className="p-4 border-t space-y-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) avatarMutation.mutate(file);
+              e.target.value = "";
+            }}
+          />
           <div className="flex items-center gap-3 px-1">
-            <div className="flex items-center justify-center h-9 w-9 rounded-full bg-primary text-primary-foreground font-semibold uppercase shrink-0">
-              {user?.email?.charAt(0) ?? "U"}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{user?.email}</p>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="relative shrink-0 group"
+              title="Cambiar foto de perfil"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="h-10 w-10 rounded-full object-cover ring-2 ring-primary/30" />
+              ) : (
+                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary text-primary-foreground font-semibold uppercase">
+                  {user?.email?.charAt(0) ?? "U"}
+                </div>
+              )}
+              <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="h-4 w-4 text-white" />
+              </div>
+            </button>
+            <div className="min-w-0 flex-1">
+              {editingName ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={nameInput}
+                    onChange={e => setNameInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") handleNameSave(); if (e.key === "Escape") setEditingName(false); }}
+                    className="flex-1 min-w-0 text-sm border border-primary rounded-md px-1.5 py-0.5 bg-background focus:outline-none"
+                  />
+                  <button onClick={handleNameSave} className="p-0.5 text-primary hover:text-primary/80">
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 group/name">
+                  <p className="text-sm font-medium truncate">{profile?.name || user?.email}</p>
+                  <button onClick={handleNameEdit} className="opacity-0 group-hover/name:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-foreground">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground uppercase tracking-wide">{user?.role}</p>
             </div>
           </div>
