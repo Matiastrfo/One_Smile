@@ -244,7 +244,7 @@ export function PatientProfilePage() {
   const { data: patientImages = [] } = useQuery<PatientImage[]>({
     queryKey: ["patientImages", patientId],
     queryFn: () => getPatientImages(patientId),
-    enabled: activeTab === "imagenes",
+    enabled: activeTab === "history",
   });
 
   const uploadImageMutation = useMutation({
@@ -331,17 +331,10 @@ export function PatientProfilePage() {
           <Wallet className="h-4 w-4" /> Cuenta Corriente
         </button>
         <button
-          onClick={() => setActiveTab("imagenes")}
-          className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "imagenes" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-          Imágenes
-        </button>
-        <button
           onClick={() => setActiveTab("history")}
           className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "history" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
         >
-          <Heart className="h-4 w-4" /> Historia Clínica
+          <Heart className="h-4 w-4" /> Ficha Médica
         </button>
         <button
           onClick={() => setActiveTab("treatments")}
@@ -507,9 +500,107 @@ export function PatientProfilePage() {
                 className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-all disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
-                {medicalHistoryMutation.isPending ? "Guardando..." : "Guardar historia clínica"}
+                {medicalHistoryMutation.isPending ? "Guardando..." : "Guardar ficha médica"}
               </button>
             </div>
+
+            {/* Sección de Imágenes */}
+            {(() => {
+              const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+              const IMAGE_LABELS: Record<string, string> = {
+                GENERAL: "General", CARIES: "Caries", FILLING: "Obturación", EXTRACTION_PENDING: "Extracción indicada",
+                EXTRACTED: "Extraído", CROWN: "Corona", RX: "Radiografía", IMPLANT: "Implante",
+                PERNO: "Perno", ENDODONCIA: "Endodoncia", PROTESIS: "Prótesis",
+                PROTESIS_PARCIAL: "Prótesis parcial", PUENTE: "Puente",
+              };
+              const types = Object.keys(IMAGE_LABELS);
+              const filtered = imageFilter === "ALL" ? patientImages : patientImages.filter(i => i.treatment_type === imageFilter);
+              const groups = types.filter(t => patientImages.some(i => i.treatment_type === t));
+              return (
+                <div className="space-y-4 pt-4 border-t border-border/60">
+                  <h3 className="text-sm font-bold text-foreground">Imágenes clínicas</h3>
+                  <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden"
+                    onChange={e => {
+                      Array.from(e.target.files || []).forEach(f => uploadImageMutation.mutate(f));
+                      e.target.value = "";
+                    }} />
+
+                  {/* Controles de upload */}
+                  <div className="flex flex-wrap items-end gap-3 p-4 bg-muted/30 border border-border/60 rounded-xl">
+                    <div className="space-y-1 flex-1 min-w-[140px]">
+                      <label className="text-xs font-semibold text-muted-foreground">Tipo de tratamiento</label>
+                      <select
+                        value={imgUploadForm.treatment_type}
+                        onChange={e => setImgUploadForm(f => ({ ...f, treatment_type: e.target.value }))}
+                        className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        {types.map(t => <option key={t} value={t}>{IMAGE_LABELS[t]}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1 flex-1 min-w-[160px]">
+                      <label className="text-xs font-semibold text-muted-foreground">Descripción <span className="font-normal">(opcional)</span></label>
+                      <input type="text" value={imgUploadForm.description}
+                        onChange={e => setImgUploadForm(f => ({ ...f, description: e.target.value }))}
+                        placeholder="Ej: Rx preoperatoria pieza 36"
+                        className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                    <button onClick={() => imageInputRef.current?.click()} disabled={uploadImageMutation.isPending}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 disabled:opacity-50 shrink-0">
+                      <Plus className="h-4 w-4" />
+                      {uploadImageMutation.isPending ? "Subiendo..." : "Subir imagen"}
+                    </button>
+                  </div>
+
+                  {patientImages.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-6 border border-dashed border-border/60 rounded-xl">No hay imágenes cargadas.</p>
+                  ) : (
+                    <>
+                      {/* Filtros */}
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => setImageFilter("ALL")}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${imageFilter === "ALL" ? "bg-primary text-primary-foreground border-primary" : "border-border/60 hover:bg-accent"}`}>
+                          Todos ({patientImages.length})
+                        </button>
+                        {groups.map(t => (
+                          <button key={t} onClick={() => setImageFilter(t)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${imageFilter === t ? "bg-primary text-primary-foreground border-primary" : "border-border/60 hover:bg-accent"}`}>
+                            {IMAGE_LABELS[t]} ({patientImages.filter(i => i.treatment_type === t).length})
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Galería agrupada */}
+                      {(imageFilter === "ALL" ? groups : [imageFilter]).map(group => {
+                        const imgs = filtered.filter(i => i.treatment_type === group);
+                        if (imgs.length === 0) return null;
+                        return (
+                          <div key={group} className="space-y-2">
+                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{IMAGE_LABELS[group] ?? group}</h4>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                              {imgs.map(img => (
+                                <div key={img.id} className="group relative rounded-xl overflow-hidden border border-border/60 bg-muted/20 aspect-square">
+                                  <img src={`${API_BASE}${img.file_path}`} alt={img.description || IMAGE_LABELS[img.treatment_type]}
+                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+                                    onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)} />
+                                  {img.description && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate">{img.description}</div>
+                                  )}
+                                  <button onClick={() => { if (confirm("¿Eliminar esta imagen?")) deleteImageMutation.mutate(img.id!); }}
+                                    className="absolute top-1 right-1 p-1 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-600">
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                  <div className="absolute top-1 left-1 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">{img.date}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -747,119 +838,6 @@ export function PatientProfilePage() {
           );
         })()}
 
-        {/* TAB: Imágenes */}
-        {activeTab === "imagenes" && (() => {
-          const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
-          const IMAGE_LABELS: Record<string, string> = {
-            GENERAL: "General", CARIES: "Caries", FILLING: "Obturación", EXTRACTION_PENDING: "Extracción indicada",
-            EXTRACTED: "Extraído", CROWN: "Corona", RX: "Radiografía", IMPLANT: "Implante",
-            PERNO: "Perno", ENDODONCIA: "Endodoncia", PROTESIS: "Prótesis",
-            PROTESIS_PARCIAL: "Prótesis parcial", PUENTE: "Puente",
-          };
-          const types = Object.keys(IMAGE_LABELS);
-          const filtered = imageFilter === "ALL" ? patientImages : patientImages.filter(i => i.treatment_type === imageFilter);
-          const groups = types.filter(t => patientImages.some(i => i.treatment_type === t));
-
-          return (
-            <div className="space-y-5">
-              {/* Upload area */}
-              <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden"
-                onChange={e => {
-                  const files = Array.from(e.target.files || []);
-                  files.forEach(f => uploadImageMutation.mutate(f));
-                  e.target.value = "";
-                }} />
-
-              <div className="flex flex-wrap items-end gap-3 p-4 bg-card border border-border/60 rounded-2xl">
-                <div className="space-y-1 flex-1 min-w-[140px]">
-                  <label className="text-xs font-semibold text-muted-foreground">Tipo de tratamiento</label>
-                  <select
-                    value={imgUploadForm.treatment_type}
-                    onChange={e => setImgUploadForm(f => ({ ...f, treatment_type: e.target.value }))}
-                    className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {types.map(t => <option key={t} value={t}>{IMAGE_LABELS[t]}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1 flex-1 min-w-[160px]">
-                  <label className="text-xs font-semibold text-muted-foreground">Descripción <span className="font-normal">(opcional)</span></label>
-                  <input
-                    type="text"
-                    value={imgUploadForm.description}
-                    onChange={e => setImgUploadForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="Ej: Rx preoperatoria pieza 36"
-                    className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <button
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={uploadImageMutation.isPending}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg transition-all disabled:opacity-50 shrink-0"
-                >
-                  <Plus className="h-4 w-4" />
-                  {uploadImageMutation.isPending ? "Subiendo..." : "Subir imagen"}
-                </button>
-              </div>
-
-              {patientImages.length === 0 ? (
-                <p className="text-center text-muted-foreground p-10 bg-muted/20 rounded-2xl border border-dashed border-border/60">No hay imágenes cargadas.</p>
-              ) : (
-                <>
-                  {/* Filtro por tipo */}
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setImageFilter("ALL")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${imageFilter === "ALL" ? "bg-primary text-primary-foreground border-primary" : "border-border/60 hover:bg-accent"}`}>
-                      Todos ({patientImages.length})
-                    </button>
-                    {groups.map(t => (
-                      <button key={t} onClick={() => setImageFilter(t)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${imageFilter === t ? "bg-primary text-primary-foreground border-primary" : "border-border/60 hover:bg-accent"}`}>
-                        {IMAGE_LABELS[t]} ({patientImages.filter(i => i.treatment_type === t).length})
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Galería agrupada */}
-                  {(imageFilter === "ALL" ? groups : [imageFilter]).map(group => {
-                    const imgs = filtered.filter(i => i.treatment_type === group);
-                    if (imgs.length === 0) return null;
-                    return (
-                      <div key={group} className="space-y-3">
-                        <h4 className="text-sm font-bold text-foreground border-b border-border/60 pb-1">{IMAGE_LABELS[group] ?? group}</h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                          {imgs.map(img => (
-                            <div key={img.id} className="group relative rounded-xl overflow-hidden border border-border/60 bg-muted/20 aspect-square">
-                              <img
-                                src={`${API_BASE}${img.file_path}`}
-                                alt={img.description || IMAGE_LABELS[img.treatment_type]}
-                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
-                                onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)}
-                              />
-                              {img.description && (
-                                <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate">
-                                  {img.description}
-                                </div>
-                              )}
-                              <button
-                                onClick={() => { if (confirm("¿Eliminar esta imagen?")) deleteImageMutation.mutate(img.id!); }}
-                                className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-600"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                              <div className="absolute top-1.5 left-1.5 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                                {img.date}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          );
-        })()}
 
       </div>
 
