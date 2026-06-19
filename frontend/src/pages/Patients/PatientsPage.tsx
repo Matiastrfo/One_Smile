@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, X, Search, FileText, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, FileText, Users, MessageCircle } from "lucide-react";
+
+function whatsappUrl(phone: string) {
+  return `https://wa.me/${phone.replace(/\D/g, "")}`;
+}
 import { getPatients, createPatient, updatePatient, deletePatient } from "../../api/patientApi";
 import { Link } from "react-router-dom";
 import type { Patient } from "../../types";
@@ -142,6 +146,17 @@ export function PatientsPage() {
                     <td className="px-6 py-4 text-muted-foreground">{p.phone ?? <span className="italic text-muted-foreground/50">—</span>}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="inline-flex items-center gap-2">
+                      {p.phone && (
+                        <a
+                          href={whatsappUrl(p.phone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center p-2 text-[#25D366] hover:bg-[#25D366]/10 rounded-md transition-colors"
+                          title={`WhatsApp: ${p.phone}`}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </a>
+                      )}
                       <Link
                         to={`/patients/${p.id}`}
                         className="inline-flex items-center justify-center p-2 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 rounded-md transition-colors"
@@ -149,7 +164,7 @@ export function PatientsPage() {
                       >
                         <FileText className="h-4 w-4" />
                       </Link>
-                      <button 
+                      <button
                         onClick={() => openModalForEdit(p)}
                         className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-md transition-colors"
                         title="Editar"

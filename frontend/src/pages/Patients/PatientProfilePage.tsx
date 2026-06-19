@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle } from "lucide-react";
+
+function whatsappUrl(phone: string) {
+  return `https://wa.me/${phone.replace(/\D/g, "")}`;
+}
 import { useNavigate, useLocation } from "react-router-dom";
 import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment } from "../../api/patientApi";
 import type { PatientAccount } from "../../types";
@@ -271,9 +275,23 @@ export function PatientProfilePage() {
           <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-accent text-primary shrink-0">
             <FileText className="h-6 w-6" />
           </div>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Historia Clínica</h2>
-            <p className="text-muted-foreground">Paciente: <span className="font-semibold text-foreground">{report.patient.name}</span> (DNI: {report.patient.dni})</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Historia Clínica</h2>
+              <p className="text-muted-foreground">Paciente: <span className="font-semibold text-foreground">{report.patient.name}</span> (DNI: {report.patient.dni})</p>
+            </div>
+            {(report.patient as any).phone && (
+              <a
+                href={whatsappUrl((report.patient as any).phone)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-sm font-semibold"
+                title={`WhatsApp: ${(report.patient as any).phone}`}
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </a>
+            )}
           </div>
         </div>
       </div>
