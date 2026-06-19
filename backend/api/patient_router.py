@@ -94,16 +94,10 @@ def get_account_summary(current_user: User = Depends(get_current_user)):
 
 @router.get("/{patient_id}/account")
 def get_patient_account(patient_id: int, current_user: User = Depends(get_current_user)):
-    repo = PatientPaymentRepository()
     from persistence.treatment_repository import TreatmentRepository
     treatments = TreatmentRepository().get_by_patient(patient_id)
-    payments = repo.get_by_patient(patient_id)
-    charges = [
-        {"id": t.id, "source": "treatment", "date": t.date_time[:10] if t.date_time else "", "description": t.description, "amount": t.price or 0, "professional_name": t.professional_email}
-        for t in treatments if (t.price or 0) > 0 and not t.odontogram_type
-        or (t.price or 0) > 0 and t.odontogram_type and not t.arch_teeth
-    ]
-    # Include all treatments with price > 0, deduplicate arch treatments
+    payments = PatientPaymentRepository().get_by_patient(patient_id)
+
     seen_arch = set()
     charge_list = []
     for t in treatments:
@@ -120,10 +114,12 @@ def get_patient_account(patient_id: int, current_user: User = Depends(get_curren
             "amount": t.price or 0,
             "professional_name": t.professional_email,
         })
+
     pay_list = [
         {"id": p.id, "source": "payment", "date": p.date, "description": p.description, "amount": p.amount, "professional_name": p.professional_name}
         for p in payments
     ]
+
     total_charges = sum(c["amount"] for c in charge_list)
     total_payments = sum(p["amount"] for p in pay_list)
     return {

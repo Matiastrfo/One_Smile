@@ -43,10 +43,22 @@ class PatientPaymentRepository:
         where = "WHERE p.professional_id = ?" if professional_id else ""
         params = (professional_id,) if professional_id else ()
         cursor.execute(f"""
-            SELECT p.id, p.name, p.last_name, p.dni,
-                COALESCE((SELECT SUM(t.price) FROM treatments t WHERE t.patient_id = p.id AND t.price > 0), 0) as total_charges,
-                COALESCE((SELECT SUM(pp.amount) FROM patient_payments pp WHERE pp.patient_id = p.id), 0) as total_payments
+            SELECT
+                p.id, p.name, p.last_name, p.dni,
+                COALESCE(tc.total, 0) AS total_charges,
+                COALESCE(tp.total, 0) AS total_payments
             FROM patients p
+            LEFT JOIN (
+                SELECT patient_id, SUM(price) AS total
+                FROM treatments
+                WHERE price > 0
+                GROUP BY patient_id
+            ) tc ON tc.patient_id = p.id
+            LEFT JOIN (
+                SELECT patient_id, SUM(amount) AS total
+                FROM patient_payments
+                GROUP BY patient_id
+            ) tp ON tp.patient_id = p.id
             {where}
             ORDER BY p.name ASC
         """, params)
