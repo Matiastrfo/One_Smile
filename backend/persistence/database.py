@@ -232,21 +232,18 @@ def init_db():
                 (contract_id, box_id, shift, prof_id)
             )
 
-    # Migración: agregar columna phone y campos de historia clínica a patients si no existen
+    # Migración: agregar columnas a patients si no existen
     cursor.execute("PRAGMA table_info(patients)")
     patient_columns = [row[1] for row in cursor.fetchall()]
-    if "phone" not in patient_columns:
-        cursor.execute("ALTER TABLE patients ADD COLUMN phone TEXT")
-    if "blood_type" not in patient_columns:
-        cursor.execute("ALTER TABLE patients ADD COLUMN blood_type TEXT")
-    if "allergies" not in patient_columns:
-        cursor.execute("ALTER TABLE patients ADD COLUMN allergies TEXT")
-    if "diseases" not in patient_columns:
-        cursor.execute("ALTER TABLE patients ADD COLUMN diseases TEXT")
-    if "medications" not in patient_columns:
-        cursor.execute("ALTER TABLE patients ADD COLUMN medications TEXT")
-    if "observations" not in patient_columns:
-        cursor.execute("ALTER TABLE patients ADD COLUMN observations TEXT")
+    for col in [
+        ("phone", "TEXT"), ("blood_type", "TEXT"), ("allergies", "TEXT"),
+        ("diseases", "TEXT"), ("medications", "TEXT"), ("observations", "TEXT"),
+        ("last_name", "TEXT"), ("social_security", "TEXT"), ("social_security_number", "TEXT"),
+        ("address", "TEXT"), ("province", "TEXT"), ("city", "TEXT"),
+        ("email", "TEXT"), ("birth_date", "TEXT"), ("photo_path", "TEXT"),
+    ]:
+        if col[0] not in patient_columns:
+            cursor.execute(f"ALTER TABLE patients ADD COLUMN {col[0]} {col[1]}")
 
     # Migración: agregar columnas name y avatar_path a users si no existen
     cursor.execute("PRAGMA table_info(users)")

@@ -53,3 +53,12 @@ export const getOdontogram = async (patientId: number): Promise<any> => {
 export const updateTooth = async (patientId: number, toothNumber: number, update: { treatment_type: string; color: string | null; faces: string[] }): Promise<void> => {
   await api.put(`/patients/${patientId}/odontogram/pieces/${toothNumber}`, update);
 };
+
+export const uploadPatientPhoto = async (patientId: number, file: File): Promise<Patient> => {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post(`/patients/${patientId}/photo`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};

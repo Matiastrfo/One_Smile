@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient } from "../../api/patientApi";
+import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto } from "../../api/patientApi";
 import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf } from "../../utils/odontogramPdf";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram from "../../components/Odontogram/Odontogram";
@@ -14,9 +14,14 @@ export function PatientProfilePage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   
-  const [activeTab, setActiveTab] = useState<"history" | "treatments" | "odontogram">("odontogram");
+  const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram">("odontogram");
   const [odontogramPartialStart, setOdontogramPartialStart] = useState<number | null>(null);
   const [medicalHistory, setMedicalHistory] = useState({ blood_type: "", allergies: "", diseases: "", medications: "", observations: "" });
+  const [filiatorio, setFiliatorio] = useState({
+    last_name: "", social_security: "", social_security_number: "",
+    address: "", province: "", city: "", email: "", birth_date: "",
+  });
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
   const [treatmentData, setTreatmentData] = useState({ description: "", price: "", date_time: new Date().toISOString().split("T")[0] });
@@ -145,18 +150,35 @@ export function PatientProfilePage() {
         medications: p.medications ?? "",
         observations: p.observations ?? "",
       });
+      setFiliatorio({
+        last_name: p.last_name ?? "",
+        social_security: p.social_security ?? "",
+        social_security_number: p.social_security_number ?? "",
+        address: p.address ?? "",
+        province: p.province ?? "",
+        city: p.city ?? "",
+        email: p.email ?? "",
+        birth_date: p.birth_date ?? "",
+      });
     }
   }, [report?.patient]);
 
   const medicalHistoryMutation = useMutation({
-    mutationFn: () => updatePatient(patientId, {
-      name: report!.patient.name,
-      dni: report!.patient.dni,
-      phone: (report!.patient as any).phone,
-      ...medicalHistory,
-    }),
+    mutationFn: () => updatePatient(patientId, { ...(report!.patient as any), ...medicalHistory }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }),
     onError: () => alert("Error al guardar la historia clínica"),
+  });
+
+  const filiatoryMutation = useMutation({
+    mutationFn: () => updatePatient(patientId, { ...(report!.patient as any), ...filiatorio }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }),
+    onError: () => alert("Error al guardar los datos filiatorios"),
+  });
+
+  const photoMutation = useMutation({
+    mutationFn: (file: File) => uploadPatientPhoto(patientId, file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }),
+    onError: () => alert("Error al subir la foto"),
   });
 
   const closeTreatmentModal = () => {
@@ -229,6 +251,12 @@ export function PatientProfilePage() {
 
       <div className="flex flex-wrap justify-center gap-2 p-1.5 bg-card border border-border/60 rounded-2xl shadow-sm">
         <button
+          onClick={() => setActiveTab("filiatorio")}
+          className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "filiatorio" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
+        >
+          <User className="h-4 w-4" /> Datos Filiatorios
+        </button>
+        <button
           onClick={() => setActiveTab("history")}
           className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "history" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
         >
@@ -250,6 +278,77 @@ export function PatientProfilePage() {
       </div>
 
       <div className="mt-6">
+        {/* TAB: Datos Filiatorios */}
+        {activeTab === "filiatorio" && (
+          <div className="space-y-6 max-w-3xl">
+            {/* Foto del paciente */}
+            <div className="flex items-center gap-6 p-5 bg-card border border-border/60 rounded-2xl">
+              <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) photoMutation.mutate(f); e.target.value = ""; }} />
+              <button onClick={() => photoInputRef.current?.click()} className="relative shrink-0 group" title="Cambiar foto">
+                {(report.patient as any).photo_path ? (
+                  <img
+                    src={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}${(report.patient as any).photo_path}`}
+                    alt="Foto del paciente"
+                    className="h-24 w-24 rounded-2xl object-cover ring-2 ring-primary/30"
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-2xl bg-accent flex items-center justify-center text-primary">
+                    <User className="h-12 w-12" />
+                  </div>
+                )}
+                <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Camera className="h-6 w-6 text-white" />
+                </div>
+              </button>
+              <div>
+                <p className="font-bold text-lg">{filiatorio.last_name ? `${report.patient.name} ${filiatorio.last_name}` : report.patient.name}</p>
+                <p className="text-sm text-muted-foreground">DNI: {report.patient.dni || "—"}</p>
+                <p className="text-xs text-muted-foreground mt-1">Hacé click en la foto para cambiarla</p>
+              </div>
+            </div>
+
+            {/* Campos filiatorios */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { label: "Nombre", value: report.patient.name, disabled: true },
+                { label: "Apellido", key: "last_name" },
+                { label: "DNI", value: report.patient.dni, disabled: true },
+                { label: "Fecha de nacimiento", key: "birth_date", type: "date" },
+                { label: "Teléfono", value: (report.patient as any).phone, disabled: true },
+                { label: "Correo electrónico", key: "email", type: "email" },
+                { label: "Obra social", key: "social_security" },
+                { label: "N° de obra social", key: "social_security_number" },
+                { label: "Dirección", key: "address" },
+                { label: "Localidad", key: "city" },
+                { label: "Provincia", key: "province" },
+              ].map(f => (
+                <div key={f.label} className="space-y-1.5">
+                  <label className="text-sm font-semibold text-foreground">{f.label}</label>
+                  <input
+                    type={f.type || "text"}
+                    disabled={!!f.disabled}
+                    value={f.disabled ? (f.value ?? "") : (filiatorio as any)[f.key!] ?? ""}
+                    onChange={e => !f.disabled && f.key && setFiliatorio(prev => ({ ...prev, [f.key!]: e.target.value }))}
+                    className="w-full border border-input bg-background text-foreground px-3 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => filiatoryMutation.mutate()}
+                disabled={filiatoryMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-all disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {filiatoryMutation.isPending ? "Guardando..." : "Guardar datos filiatorios"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* TAB: Historia Clínica */}
         {activeTab === "history" && (
           <div className="space-y-5 max-w-2xl">

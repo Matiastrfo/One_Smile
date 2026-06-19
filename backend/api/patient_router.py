@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi.responses import JSONResponse
 from typing import List, Optional
+import os, shutil, uuid
 from domain.patient import Patient
 from domain.user import User
 from services.patient_service import PatientService
@@ -61,6 +63,23 @@ def update_patient(patient_id: int, patient: Patient, current_user: User = Depen
 def delete_patient(patient_id: int, current_admin: User = Depends(require_admin)):
     patient_service.delete_patient(patient_id)
     return {"message": "Paciente eliminado"}
+
+PATIENT_PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "patients")
+os.makedirs(PATIENT_PHOTOS_DIR, exist_ok=True)
+
+@router.post("/{patient_id}/photo", response_model=Patient)
+def upload_patient_photo(patient_id: int, file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    patient = patient_service.get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Paciente no encontrado")
+    ext = os.path.splitext(file.filename or "photo.jpg")[1].lower() or ".jpg"
+    filename = f"{patient_id}_{uuid.uuid4().hex}{ext}"
+    dest = os.path.join(PATIENT_PHOTOS_DIR, filename)
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    patient.photo_path = f"/uploads/patients/{filename}"
+    patient_service.update_patient(patient_id, patient)
+    return patient
 
 
 

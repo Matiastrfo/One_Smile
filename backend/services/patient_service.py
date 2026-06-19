@@ -22,6 +22,9 @@ class PatientService:
     def get_all_patients(self, search: str = None, professional_id: int = None) -> List[Patient]:
         return self.repository.get_all(search, professional_id)
 
+    def get_patient(self, patient_id: int) -> Patient | None:
+        return self.repository.get_by_id(patient_id)
+
     def get_patient_report(self, patient_id: int) -> PatientReport:
         patient = self.repository.get_by_id(patient_id)
         if not patient:

@@ -8,6 +8,16 @@ export interface Patient {
   diseases?: string;
   medications?: string;
   observations?: string;
+  // Datos filiatorios
+  last_name?: string;
+  social_security?: string;
+  social_security_number?: string;
+  address?: string;
+  province?: string;
+  city?: string;
+  email?: string;
+  birth_date?: string;
+  photo_path?: string;
 }
 
 export interface Appointment {

@@ -46,6 +46,7 @@ async def limit_request_size(request: Request, call_next):
 
 UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(os.path.join(UPLOADS_DIR, "avatars"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "patients"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 @app.on_event("startup")
