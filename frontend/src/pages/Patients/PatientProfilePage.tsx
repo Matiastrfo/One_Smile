@@ -425,7 +425,8 @@ export function PatientProfilePage() {
 
         {/* TAB: Historia Clínica */}
         {activeTab === "history" && (
-          <div className="space-y-5 max-w-2xl">
+          <div className="flex gap-6 items-start">
+          <div className="space-y-5 flex-1 min-w-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-foreground">Grupo sanguíneo</label>
@@ -492,7 +493,7 @@ export function PatientProfilePage() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors"
               >
                 <FileText className="h-4 w-4" />
-                Descargar PDF
+                Descargar ficha médica PDF
               </button>
               <button
                 onClick={() => medicalHistoryMutation.mutate()}
@@ -504,7 +505,10 @@ export function PatientProfilePage() {
               </button>
             </div>
 
-            {/* Sección de Imágenes */}
+          </div>{/* fin columna izquierda */}
+
+          {/* Columna derecha — Imágenes */}
+          <div className="w-80 shrink-0 space-y-4">
             {(() => {
               const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
               const IMAGE_LABELS: Record<string, string> = {
@@ -517,7 +521,7 @@ export function PatientProfilePage() {
               const filtered = imageFilter === "ALL" ? patientImages : patientImages.filter(i => i.treatment_type === imageFilter);
               const groups = types.filter(t => patientImages.some(i => i.treatment_type === t));
               return (
-                <div className="space-y-4 pt-4 border-t border-border/60">
+                <div className="space-y-4">
                   <h3 className="text-sm font-bold text-foreground">Imágenes clínicas</h3>
                   <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden"
                     onChange={e => {
@@ -601,7 +605,8 @@ export function PatientProfilePage() {
                 </div>
               );
             })()}
-          </div>
+          </div>{/* fin columna derecha */}
+          </div>{/* fin flex wrapper */}
         )}
 
         {/* TAB: Tratamientos */}

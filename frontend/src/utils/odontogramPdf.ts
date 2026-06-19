@@ -265,7 +265,7 @@ export function downloadTreatmentsPdf(patientName: string, treatments: { date_ti
   doc.save(`tratamientos_${patientName.replace(/\s+/g, '_')}.pdf`);
 }
 
-export function downloadMedicalHistoryPdf(patient: Patient) {
+export function downloadMedicalHistoryPdf(patient: any) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -277,7 +277,6 @@ export function downloadMedicalHistoryPdf(patient: Patient) {
   doc.rect(0, 0, W, 36, 'F');
   doc.setFillColor(...blue);
   doc.rect(0, 33, W, 3, 'F');
-
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
@@ -288,103 +287,90 @@ export function downloadMedicalHistoryPdf(patient: Patient) {
   doc.text('ODONTOLOGÍA TRIFIRO', W / 2, 22, { align: 'center' });
   doc.setFontSize(9);
   doc.setTextColor(200, 225, 255);
-  doc.text('HISTORIA CLÍNICA DEL PACIENTE', W / 2, 30, { align: 'center' });
+  doc.text('FICHA MÉDICA DEL PACIENTE', W / 2, 30, { align: 'center' });
 
-  // Nombre y fecha
+  // Nombre completo y fecha
+  const fullName = [patient.name, patient.last_name].filter(Boolean).join(' ');
   doc.setTextColor(...darkBlue);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text(patient.name, 14, 48);
-
+  doc.text(fullName, 14, 48);
   const dateStr = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 120);
   doc.text(dateStr, W - 14, 48, { align: 'right' });
-
   doc.setDrawColor(...blue);
   doc.setLineWidth(0.4);
   doc.line(14, 52, W - 14, 52);
 
-  // Datos personales
   let y = 62;
 
   const sectionTitle = (title: string) => {
+    if (y > H - 40) { doc.addPage(); y = 20; }
     doc.setFillColor(240, 245, 255);
     doc.rect(14, y - 5, W - 28, 9, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(...blue);
     doc.text(title.toUpperCase(), 16, y);
-    y += 10;
+    y += 12;
   };
 
   const field = (label: string, value: string | undefined | null) => {
     if (!value?.trim()) return;
+    if (y > H - 30) { doc.addPage(); y = 20; }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(...darkBlue);
     doc.text(`${label}:`, 16, y);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(60, 60, 80);
-    const lines = doc.splitTextToSize(value, W - 60);
-    doc.text(lines, 55, y);
-    y += lines.length * 6 + 3;
-    if (y > H - 30) { doc.addPage(); y = 20; }
+    const lines = doc.splitTextToSize(value, W - 65);
+    doc.text(lines, 58, y);
+    y += lines.length * 6 + 2;
   };
 
-  sectionTitle('Datos Personales');
+  const emptyNote = (msg: string) => {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 170);
+    doc.text(msg, 16, y);
+    y += 8;
+  };
+
+  // ── Datos filiatorios ──────────────────────────────────────────────────
+  sectionTitle('Datos Filiatorios');
   field('DNI', patient.dni);
+  field('Fecha de nac.', patient.birth_date);
   field('Teléfono', patient.phone);
-  field('Grupo sanguíneo', patient.blood_type);
+  field('Email', patient.email);
+  field('Obra social', patient.social_security);
+  field('N° obra social', patient.social_security_number);
+  field('Dirección', patient.address);
+  field('Localidad', patient.city);
+  field('Provincia', patient.province);
   y += 4;
+
+  // ── Datos médicos ──────────────────────────────────────────────────────
+  sectionTitle('Datos Médicos');
+  field('Grupo sanguíneo', patient.blood_type);
+  y += 2;
 
   sectionTitle('Alergias');
-  if (patient.allergies?.trim()) {
-    field('', patient.allergies);
-  } else {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
-    doc.setTextColor(150, 150, 170);
-    doc.text('Sin alergias registradas', 16, y);
-    y += 9;
-  }
-  y += 4;
+  patient.allergies?.trim() ? field('', patient.allergies) : emptyNote('Sin alergias registradas');
+  y += 2;
 
   sectionTitle('Enfermedades / Antecedentes');
-  if (patient.diseases?.trim()) {
-    field('', patient.diseases);
-  } else {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
-    doc.setTextColor(150, 150, 170);
-    doc.text('Sin antecedentes registrados', 16, y);
-    y += 9;
-  }
-  y += 4;
+  patient.diseases?.trim() ? field('', patient.diseases) : emptyNote('Sin antecedentes registrados');
+  y += 2;
 
   sectionTitle('Medicamentos actuales');
-  if (patient.medications?.trim()) {
-    field('', patient.medications);
-  } else {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
-    doc.setTextColor(150, 150, 170);
-    doc.text('Sin medicamentos registrados', 16, y);
-    y += 9;
-  }
-  y += 4;
+  patient.medications?.trim() ? field('', patient.medications) : emptyNote('Sin medicamentos registrados');
+  y += 2;
 
   sectionTitle('Observaciones generales');
-  if (patient.observations?.trim()) {
-    field('', patient.observations);
-  } else {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
-    doc.setTextColor(150, 150, 170);
-    doc.text('Sin observaciones', 16, y);
-    y += 9;
-  }
+  patient.observations?.trim() ? field('', patient.observations) : emptyNote('Sin observaciones');
 
   // Footer
   doc.setFillColor(...darkBlue);
@@ -394,5 +380,5 @@ export function downloadMedicalHistoryPdf(patient: Patient) {
   doc.setTextColor(160, 195, 240);
   doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
 
-  doc.save(`historia_clinica_${patient.name.replace(/\s+/g, '_')}.pdf`);
+  doc.save(`ficha_medica_${fullName.replace(/\s+/g, '_')}.pdf`);
 }
