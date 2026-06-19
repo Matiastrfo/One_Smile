@@ -265,6 +265,21 @@ def init_db():
     if "arch_teeth" not in t_columns:
         cursor.execute("ALTER TABLE treatments ADD COLUMN arch_teeth TEXT")
 
+    # Tabla: imágenes clínicas por paciente
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS patient_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            professional_id INTEGER,
+            date TEXT NOT NULL,
+            treatment_type TEXT NOT NULL DEFAULT 'GENERAL',
+            description TEXT,
+            file_path TEXT NOT NULL,
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    """)
+
     # Tabla: pagos de pacientes (cuenta corriente)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patient_payments (

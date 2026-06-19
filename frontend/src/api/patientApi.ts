@@ -73,6 +73,26 @@ export const deletePatientPayment = async (patientId: number, paymentId: number)
   await api.delete(`/patients/${patientId}/payments/${paymentId}`);
 };
 
+export const getPatientImages = async (patientId: number) => {
+  const { data } = await api.get(`/patients/${patientId}/images`);
+  return data;
+};
+
+export const uploadPatientImage = async (patientId: number, file: File, treatmentType: string, description: string) => {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("treatment_type", treatmentType);
+  form.append("description", description);
+  const { data } = await api.post(`/patients/${patientId}/images`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+
+export const deletePatientImage = async (patientId: number, imageId: number) => {
+  await api.delete(`/patients/${patientId}/images/${imageId}`);
+};
+
 export const uploadPatientPhoto = async (patientId: number, file: File): Promise<Patient> => {
   const form = new FormData();
   form.append("file", file);

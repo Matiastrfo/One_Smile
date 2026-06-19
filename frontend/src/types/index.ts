@@ -105,6 +105,16 @@ export const DAY_LABELS: Record<DayOfWeek, string> = {
   THURSDAY: 'Jueves', FRIDAY: 'Viernes',
 };
 
+export interface PatientImage {
+  id?: number;
+  patient_id: number;
+  date: string;
+  treatment_type: string;
+  description?: string;
+  file_path: string;
+  professional_name?: string;
+}
+
 export interface PatientPayment {
   id?: number;
   patient_id: number;

@@ -4,6 +4,8 @@ from typing import List, Optional
 import os, shutil, uuid
 from domain.patient_payment import PatientPayment
 from persistence.patient_payment_repository import PatientPaymentRepository
+from domain.patient_image import PatientImage
+from persistence.patient_image_repository import PatientImageRepository
 from domain.patient import Patient
 from domain.user import User
 from services.patient_service import PatientService
@@ -139,6 +141,47 @@ def add_payment(patient_id: int, payment: PatientPayment, current_user: User = D
 def delete_payment(patient_id: int, payment_id: int, current_user: User = Depends(get_current_user)):
     PatientPaymentRepository().delete(payment_id)
     return {"message": "Pago eliminado"}
+
+PATIENT_IMAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "images")
+os.makedirs(PATIENT_IMAGES_DIR, exist_ok=True)
+
+@router.get("/{patient_id}/images", response_model=List[PatientImage])
+def get_patient_images(patient_id: int, current_user: User = Depends(get_current_user)):
+    return PatientImageRepository().get_by_patient(patient_id)
+
+@router.post("/{patient_id}/images", response_model=PatientImage)
+def upload_patient_image(
+    patient_id: int,
+    file: UploadFile = File(...),
+    treatment_type: str = "GENERAL",
+    description: str = "",
+    current_user: User = Depends(get_current_user),
+):
+    from datetime import date as _date
+    ext = os.path.splitext(file.filename or "img.jpg")[1].lower() or ".jpg"
+    filename = f"{patient_id}_{uuid.uuid4().hex}{ext}"
+    dest = os.path.join(PATIENT_IMAGES_DIR, filename)
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    img = PatientImage(
+        patient_id=patient_id,
+        professional_id=current_user.id,
+        date=str(_date.today()),
+        treatment_type=treatment_type,
+        description=description or None,
+        file_path=f"/uploads/images/{filename}",
+    )
+    return PatientImageRepository().insert(img)
+
+@router.delete("/{patient_id}/images/{image_id}")
+def delete_patient_image(patient_id: int, image_id: int, current_user: User = Depends(get_current_user)):
+    repo = PatientImageRepository()
+    file_path = repo.delete(image_id)
+    if file_path:
+        abs_path = os.path.join(os.path.dirname(__file__), "..", file_path.lstrip("/"))
+        if os.path.exists(abs_path):
+            os.remove(abs_path)
+    return {"message": "Imagen eliminada"}
 
 odontogram_service = OdontogramService()
 
