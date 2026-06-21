@@ -7,7 +7,7 @@ interface QuickAppointmentModalProps {
   patients: Patient[];
   preselectedPatientId?: number | null;
   onClose: () => void;
-  onSubmitNew: (data: { patient_name: string; patient_phone?: string; date_time: string; reason?: string }) => void;
+  onSubmitNew: (data: { patient_name: string; patient_phone?: string; patient_email?: string; date_time: string; reason?: string }) => void;
   onSubmitExisting: (data: { patient_id: number; date_time: string; reason: string }) => void;
   isPending: boolean;
 }
@@ -26,6 +26,7 @@ export function QuickAppointmentModal({ date, patients, preselectedPatientId, on
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(preselected);
   const [patientName, setPatientName] = useState("");
   const [patientPhone, setPatientPhone] = useState("");
+  const [patientEmail, setPatientEmail] = useState("");
   const [apptDate, setApptDate] = useState(defaultDate);
   const [apptTime, setApptTime] = useState("09:00");
   const [reason, setReason] = useState("");
@@ -43,7 +44,7 @@ export function QuickAppointmentModal({ date, patients, preselectedPatientId, on
       onSubmitExisting({ patient_id: selectedPatient.id!, date_time, reason });
     } else {
       if (!patientName.trim()) return;
-      onSubmitNew({ patient_name: patientName.trim(), patient_phone: patientPhone.trim() || undefined, date_time, reason });
+      onSubmitNew({ patient_name: patientName.trim(), patient_phone: patientPhone.trim() || undefined, patient_email: patientEmail.trim() || undefined, date_time, reason });
     }
   };
 
@@ -152,6 +153,16 @@ export function QuickAppointmentModal({ date, patients, preselectedPatientId, on
                   value={patientPhone}
                   onChange={e => setPatientPhone(e.target.value)}
                   placeholder="Ej: +5491112345678"
+                  className="w-full bg-background border border-input rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Email <span className="font-normal">(opcional — para recordatorios)</span></label>
+                <input
+                  type="email"
+                  value={patientEmail}
+                  onChange={e => setPatientEmail(e.target.value)}
+                  placeholder="Ej: paciente@email.com"
                   className="w-full bg-background border border-input rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>

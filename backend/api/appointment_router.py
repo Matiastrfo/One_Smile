@@ -16,6 +16,7 @@ patient_service = PatientService()
 class QuickAppointmentRequest(BaseModel):
     patient_name: str
     patient_phone: Optional[str] = None
+    patient_email: Optional[str] = None
     date_time: str
     reason: Optional[str] = ""
 
@@ -46,7 +47,7 @@ def delete_appointment(appointment_id: int, current_user: User = Depends(get_cur
 @router.post("/quick", response_model=Appointment)
 def quick_appointment(body: QuickAppointmentRequest, current_user: User = Depends(get_current_user)):
     """Crea un paciente (solo nombre) y un turno en un solo paso."""
-    patient = patient_service.create_patient(Patient(name=body.patient_name, phone=body.patient_phone, professional_id=current_user.id))
+    patient = patient_service.create_patient(Patient(name=body.patient_name, phone=body.patient_phone, email=body.patient_email, professional_id=current_user.id))
     try:
         appt = Appointment(patient_id=patient.id, date_time=body.date_time, reason=body.reason, professional_id=current_user.id)
         return appointment_service.create_appointment(appt)

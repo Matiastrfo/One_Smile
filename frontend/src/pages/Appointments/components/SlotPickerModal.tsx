@@ -21,7 +21,7 @@ interface Props {
   onClose: () => void;
   onDateChange?: (date: Date) => void;
   onSubmit: (data: { patient_id: number; date_time: string; reason: string }) => void;
-  onSubmitNew: (data: { patient_name: string; patient_phone?: string; date_time: string; reason?: string }) => void;
+  onSubmitNew: (data: { patient_name: string; patient_phone?: string; patient_email?: string; date_time: string; reason?: string }) => void;
   isPending: boolean;
 }
 
@@ -90,6 +90,7 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
   const [search, setSearch] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [reason, setReason] = useState("");
 
   const bookedTimes = new Set(
@@ -111,7 +112,7 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
     if (mode === "existing" && patientId) {
       onSubmit({ patient_id: parseInt(patientId), date_time, reason });
     } else if (mode === "new" && newName.trim()) {
-      onSubmitNew({ patient_name: newName.trim(), patient_phone: newPhone.trim() || undefined, date_time, reason });
+      onSubmitNew({ patient_name: newName.trim(), patient_phone: newPhone.trim() || undefined, patient_email: newEmail.trim() || undefined, date_time, reason });
     }
   };
 
@@ -232,7 +233,7 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
             </button>
             <button
               type="button"
-              onClick={() => { setMode("new"); setPatientId(""); setSearch(""); }}
+              onClick={() => { setMode("new"); setPatientId(""); setSearch(""); setNewEmail(""); }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${mode === "new" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50"}`}
             >
               <UserPlus className="h-4 w-4" /> Paciente nuevo
@@ -305,6 +306,16 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
                   value={newPhone}
                   onChange={e => setNewPhone(e.target.value)}
                   placeholder="Ej: 11 1234-5678"
+                  className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Email <span className="font-normal text-muted-foreground">(opcional — para recordatorios)</span></label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  placeholder="Ej: paciente@email.com"
                   className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>

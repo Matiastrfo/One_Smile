@@ -16,8 +16,8 @@ class PatientRepository:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO patients (name, dni, phone, professional_id) VALUES (?, ?, ?, ?)",
-            (patient.name, patient.dni, patient.phone, patient.professional_id)
+            "INSERT INTO patients (name, dni, phone, professional_id, email) VALUES (?, ?, ?, ?, ?)",
+            (patient.name, patient.dni, patient.phone, patient.professional_id, patient.email)
         )
         patient.id = cursor.lastrowid
         conn.commit()
