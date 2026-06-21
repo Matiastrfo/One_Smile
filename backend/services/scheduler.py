@@ -37,7 +37,9 @@ def check_and_send_reminders():
     for row in rows:
         appt_id, date_time, reason, status, patient_name, patient_email, prof_name = row
         logger.info(f"Enviando recordatorio a {patient_email} para turno {date_time}")
-        send_appointment_reminder(patient_name, patient_email, date_time, prof_name, reason or "")
+        ok, msg = send_appointment_reminder(patient_name, patient_email, date_time, prof_name, reason or "")
+        if not ok:
+            logger.error(f"Fallo recordatorio a {patient_email}: {msg}")
 
 def start_scheduler():
     scheduler.add_job(check_and_send_reminders, "interval", hours=1, id="reminder_job")

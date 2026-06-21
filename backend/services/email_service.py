@@ -17,11 +17,14 @@ def get_email_config() -> dict:
     return {"smtp_host": row[0], "smtp_port": row[1], "smtp_user": row[2],
             "smtp_password": row[3], "from_name": row[4], "enabled": bool(row[5])}
 
-def send_email(to_email: str, subject: str, html_body: str) -> bool:
+def send_email(to_email: str, subject: str, html_body: str) -> tuple[bool, str]:
     config = get_email_config()
-    if not config.get("enabled") or not config.get("smtp_user") or not config.get("smtp_password"):
-        logger.warning("Email no configurado o deshabilitado.")
-        return False
+    if not config.get("enabled"):
+        return False, "El envío de emails está desactivado. Activalo en el Panel Admin."
+    if not config.get("smtp_user"):
+        return False, "Falta el email remitente en la configuración."
+    if not config.get("smtp_password"):
+        return False, "Falta la contraseña en la configuración. Volvé a guardarla con la contraseña completa."
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
@@ -34,12 +37,20 @@ def send_email(to_email: str, subject: str, html_body: str) -> bool:
             server.login(config["smtp_user"], config["smtp_password"])
             server.sendmail(config["smtp_user"], to_email, msg.as_string())
         logger.info(f"Email enviado a {to_email}")
-        return True
+        return True, "ok"
+    except smtplib.SMTPAuthenticationError:
+        msg = "Credenciales incorrectas. Para Gmail usá una App Password, no tu contraseña normal."
+        logger.error(msg)
+        return False, msg
+    except smtplib.SMTPConnectError:
+        msg = "No se pudo conectar al servidor SMTP. Verificá el host y puerto."
+        logger.error(msg)
+        return False, msg
     except Exception as e:
         logger.error(f"Error al enviar email: {e}")
-        return False
+        return False, str(e)
 
-def send_appointment_reminder(patient_name: str, patient_email: str, date_time: str, professional_name: str, reason: str = ""):
+def send_appointment_reminder(patient_name: str, patient_email: str, date_time: str, professional_name: str, reason: str = "") -> tuple[bool, str]:
     date_part, time_part = (date_time.split(" ") + [""])[:2]
     subject = f"Recordatorio de turno — {date_part} {time_part}"
     html = f"""

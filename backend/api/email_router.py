@@ -34,13 +34,23 @@ def get_config(current_user: User = Depends(require_admin)):
 def save_config(body: EmailConfig, current_user: User = Depends(require_admin)):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE email_config SET
-            smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?,
-            from_name=?, enabled=?
-        WHERE id=1
-    """, (body.smtp_host, body.smtp_port, body.smtp_user, body.smtp_password,
-          body.from_name, 1 if body.enabled else 0))
+    if body.smtp_password:
+        cursor.execute("""
+            UPDATE email_config SET
+                smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?,
+                from_name=?, enabled=?
+            WHERE id=1
+        """, (body.smtp_host, body.smtp_port, body.smtp_user, body.smtp_password,
+              body.from_name, 1 if body.enabled else 0))
+    else:
+        # No sobreescribir la contraseña si viene vacía
+        cursor.execute("""
+            UPDATE email_config SET
+                smtp_host=?, smtp_port=?, smtp_user=?,
+                from_name=?, enabled=?
+            WHERE id=1
+        """, (body.smtp_host, body.smtp_port, body.smtp_user,
+              body.from_name, 1 if body.enabled else 0))
     conn.commit()
     conn.close()
     return {"message": "Configuración guardada"}
@@ -51,17 +61,17 @@ def test_email(body: dict, current_user: User = Depends(require_admin)):
     if not to:
         raise HTTPException(status_code=400, detail="Falta el campo 'to'")
     from services.email_service import send_email
-    ok = send_email(to, "Prueba de conexión — ONE Smile",
+    ok, msg = send_email(to, "Prueba de conexión — ONE Smile",
         "<h2>✅ Conexión exitosa</h2><p>El servidor de email de ONE Smile está configurado correctamente.</p>")
     if not ok:
-        raise HTTPException(status_code=500, detail="No se pudo enviar el email. Verificá la configuración.")
+        raise HTTPException(status_code=500, detail=msg)
     return {"message": f"Email de prueba enviado a {to}"}
 
 @router.post("/reminder")
 def send_manual_reminder(body: ManualReminderRequest, current_user: User = Depends(get_current_user)):
-    ok = send_appointment_reminder(body.patient_name, body.patient_email, body.date_time, body.professional_name, body.reason)
+    ok, msg = send_appointment_reminder(body.patient_name, body.patient_email, body.date_time, body.professional_name, body.reason)
     if not ok:
-        raise HTTPException(status_code=500, detail="No se pudo enviar el recordatorio. Verificá que el email esté configurado.")
+        raise HTTPException(status_code=500, detail=msg)
     return {"message": "Recordatorio enviado"}
 
 @router.post("/run-reminders")
