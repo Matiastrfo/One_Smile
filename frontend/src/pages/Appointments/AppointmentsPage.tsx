@@ -196,16 +196,16 @@ export function AppointmentsPage() {
           patients={patients}
           preselectedPatientId={preselectedPatientId}
           onClose={() => { setShowQuickModal(false); setPreselectedPatientId(null); }}
-          onSubmitNew={() => {}}
+          onSubmitNew={quickMutation.mutate}
           onSubmitExisting={appointmentMutation.mutate}
           isPending={appointmentMutation.isPending}
         />
       )}
 
       {/* Modal configuración de horarios */}
-      {showConfigModal && scheduleConfig && (
+      {showConfigModal && (
         <ScheduleConfigModal
-          config={scheduleConfig}
+          config={scheduleConfig ?? { days: [] }}
           onClose={() => setShowConfigModal(false)}
           onSave={configMutation.mutate}
           isPending={configMutation.isPending}
