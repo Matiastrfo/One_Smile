@@ -590,10 +590,10 @@ export function PatientProfilePage() {
                                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate">{img.description}</div>
                                   )}
                                   <button onClick={() => { if (confirm("¿Eliminar esta imagen?")) deleteImageMutation.mutate(img.id!); }}
-                                    className="absolute top-1 right-1 p-1 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-600">
+                                    className="absolute top-1 right-1 p-1 rounded-lg bg-black/60 text-white hover:bg-rose-600 transition-colors">
                                     <Trash2 className="h-3 w-3" />
                                   </button>
-                                  <div className="absolute top-1 left-1 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">{img.date}</div>
+                                  <div className="absolute top-1 left-1 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded">{img.date}</div>
                                 </div>
                               ))}
                             </div>
