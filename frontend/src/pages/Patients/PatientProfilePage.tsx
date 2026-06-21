@@ -979,38 +979,6 @@ export function PatientProfilePage() {
         })()}
 
 
-      </div>
-
-      {/* Modal: Cámara */}
-      {showCamera && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-card rounded-2xl shadow-2xl overflow-hidden w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b">
-              <h3 className="font-bold text-base flex items-center gap-2">
-                <Camera className="h-4 w-4 text-primary" /> Tomar foto del paciente
-              </h3>
-              <button onClick={stopCamera} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="relative bg-black">
-              <video ref={videoRef} autoPlay playsInline className="w-full max-h-72 object-cover" />
-            </div>
-            <div className="flex gap-3 p-4">
-              <button onClick={stopCamera}
-                className="flex-1 px-4 py-2.5 border rounded-xl text-sm font-medium hover:bg-muted/50 transition-colors">
-                Cancelar
-              </button>
-              <button onClick={capturePhoto} disabled={photoMutation.isPending}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg transition-all disabled:opacity-50">
-                <Camera className="h-4 w-4" />
-                {photoMutation.isPending ? "Guardando..." : "Capturar foto"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
         {/* TAB: Presupuesto */}
         {activeTab === "presupuesto" && (
           <div className="space-y-5 max-w-3xl">
@@ -1139,6 +1107,36 @@ export function PatientProfilePage() {
         )}
 
       </div>
+
+      {/* Modal: Cámara */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-card rounded-2xl shadow-2xl overflow-hidden w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <Camera className="h-4 w-4 text-primary" /> Tomar foto del paciente
+              </h3>
+              <button onClick={stopCamera} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="relative bg-black">
+              <video ref={videoRef} autoPlay playsInline className="w-full max-h-72 object-cover" />
+            </div>
+            <div className="flex gap-3 p-4">
+              <button onClick={stopCamera}
+                className="flex-1 px-4 py-2.5 border rounded-xl text-sm font-medium hover:bg-muted/50 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={capturePhoto} disabled={photoMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg transition-all disabled:opacity-50">
+                <Camera className="h-4 w-4" />
+                {photoMutation.isPending ? "Guardando..." : "Capturar foto"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox */}
       {lightboxImg && (
