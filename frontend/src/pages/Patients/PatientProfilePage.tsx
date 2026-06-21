@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle, X } from "lucide-react";
@@ -37,38 +37,6 @@ export function PatientProfilePage() {
   const [showCamera, setShowCamera] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  const startCamera = useCallback(async () => {
-    setShowCamera(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
-    } catch {
-      alert("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
-      setShowCamera(false);
-    }
-  }, []);
-
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    setShowCamera(false);
-  }, []);
-
-  const capturePhoto = useCallback(() => {
-    if (!videoRef.current) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext("2d")!.drawImage(videoRef.current, 0, 0);
-    canvas.toBlob(blob => {
-      if (!blob) return;
-      const file = new File([blob], "foto_camara.jpg", { type: "image/jpeg" });
-      photoMutation.mutate(file);
-      stopCamera();
-    }, "image/jpeg", 0.92);
-  }, [photoMutation, stopCamera]);
   const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
   const [treatmentData, setTreatmentData] = useState({ description: "", price: "", date_time: new Date().toISOString().split("T")[0] });
@@ -227,6 +195,37 @@ export function PatientProfilePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }),
     onError: () => alert("Error al subir la foto"),
   });
+
+  const startCamera = async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch {
+      alert("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
+      setShowCamera(false);
+    }
+  };
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext("2d")!.drawImage(videoRef.current, 0, 0);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      photoMutation.mutate(new File([blob], "foto_camara.jpg", { type: "image/jpeg" }));
+      stopCamera();
+    }, "image/jpeg", 0.92);
+  };
 
   const closeTreatmentModal = () => {
     setIsTreatmentModalOpen(false);
