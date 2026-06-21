@@ -42,7 +42,7 @@ export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, 
 
   const confirmStatusChange = () => {
     if (!notesModal) return;
-    onStatusChange(notesModal.apptId, notesModal.status, notesModal.notes || undefined);
+    onStatusChange(notesModal.apptId, notesModal.status, notesModal.notes ?? "");
     setNotesModal(null);
   };
 
@@ -103,6 +103,13 @@ export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, 
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setNotesModal({ apptId: appt.id!, status: appt.status ?? "PENDING", notes: appt.notes ?? "" })}
+                    className="p-1.5 text-muted-foreground hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"
+                    title="Agregar / editar nota"
+                  >
+                    <StickyNote className="h-3.5 w-3.5" />
+                  </button>
                   <button onClick={() => downloadAppointmentPdf(appt, getPatientName(appt.patient_id), user?.name || user?.email || '', logoUrl)}
                     className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Descargar PDF">
                     <Download className="h-3.5 w-3.5" />
@@ -128,11 +135,11 @@ export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, 
           <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-5 border-b">
               <div className="flex items-center gap-2">
-                {notesModal.status === "ATTENDED"
-                  ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  : <XCircle className="h-5 w-5 text-rose-500" />}
+                <StickyNote className="h-5 w-5 text-amber-500" />
                 <h3 className="font-bold text-base">
-                  Marcar como {notesModal.status === "ATTENDED" ? "Atendido" : "Ausente"}
+                  {notesModal.status === "ATTENDED" || notesModal.status === "ABSENT"
+                    ? `Nota — ${notesModal.status === "ATTENDED" ? "Atendido" : "Ausente"}`
+                    : "Nota del turno"}
                 </h3>
               </div>
               <button onClick={() => setNotesModal(null)} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
