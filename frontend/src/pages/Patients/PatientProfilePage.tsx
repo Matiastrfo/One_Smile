@@ -352,6 +352,7 @@ export function PatientProfilePage() {
   if (!report) return <div className="p-8 text-center text-red-500">Paciente no encontrado.</div>;
 
   return (
+    <>
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       <div className="flex items-center gap-4">
         <Link to="/patients" className="p-2 hover:bg-accent hover:text-primary rounded-full transition-colors">
@@ -1188,5 +1189,6 @@ export function PatientProfilePage() {
 
 
     </div>
+    </>
   );
 }
