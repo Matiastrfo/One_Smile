@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle, X } from "lucide-react";
@@ -34,6 +34,41 @@ export function PatientProfilePage() {
     address: "", province: "", city: "", email: "", birth_date: "",
   });
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startCamera = useCallback(async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch {
+      alert("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
+      setShowCamera(false);
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    setShowCamera(false);
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext("2d")!.drawImage(videoRef.current, 0, 0);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const file = new File([blob], "foto_camara.jpg", { type: "image/jpeg" });
+      photoMutation.mutate(file);
+      stopCamera();
+    }, "image/jpeg", 0.92);
+  }, [photoMutation, stopCamera]);
   const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
   const [treatmentData, setTreatmentData] = useState({ description: "", price: "", date_time: new Date().toISOString().split("T")[0] });
@@ -359,7 +394,7 @@ export function PatientProfilePage() {
             <div className="flex items-center gap-6 p-5 bg-card border border-border/60 rounded-2xl">
               <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) photoMutation.mutate(f); e.target.value = ""; }} />
-              <button onClick={() => photoInputRef.current?.click()} className="relative shrink-0 group" title="Cambiar foto">
+              <button onClick={() => photoInputRef.current?.click()} className="relative shrink-0 group" title="Subir foto desde archivo">
                 {(report.patient as any).photo_path ? (
                   <img
                     src={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}${(report.patient as any).photo_path}`}
@@ -375,10 +410,19 @@ export function PatientProfilePage() {
                   <Camera className="h-6 w-6 text-white" />
                 </div>
               </button>
-              <div>
+              <div className="space-y-2">
                 <p className="font-bold text-lg">{filiatorio.last_name ? `${report.patient.name} ${filiatorio.last_name}` : report.patient.name}</p>
                 <p className="text-sm text-muted-foreground">DNI: {report.patient.dni || "—"}</p>
-                <p className="text-xs text-muted-foreground mt-1">Hacé click en la foto para cambiarla</p>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => photoInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-border/60 rounded-xl hover:bg-accent transition-colors">
+                    <Camera className="h-3.5 w-3.5" /> Subir archivo
+                  </button>
+                  <button onClick={startCamera}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors shadow-sm">
+                    <Camera className="h-3.5 w-3.5" /> Tomar foto
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -849,6 +893,36 @@ export function PatientProfilePage() {
 
 
       </div>
+
+      {/* Modal: Cámara */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-card rounded-2xl shadow-2xl overflow-hidden w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <Camera className="h-4 w-4 text-primary" /> Tomar foto del paciente
+              </h3>
+              <button onClick={stopCamera} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="relative bg-black">
+              <video ref={videoRef} autoPlay playsInline className="w-full max-h-72 object-cover" />
+            </div>
+            <div className="flex gap-3 p-4">
+              <button onClick={stopCamera}
+                className="flex-1 px-4 py-2.5 border rounded-xl text-sm font-medium hover:bg-muted/50 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={capturePhoto} disabled={photoMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg transition-all disabled:opacity-50">
+                <Camera className="h-4 w-4" />
+                {photoMutation.isPending ? "Guardando..." : "Capturar foto"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox */}
       {lightboxImg && (
