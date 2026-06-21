@@ -109,10 +109,14 @@ export function AppointmentsPage() {
       })
     : [];
 
-  // Determina si el día seleccionado tiene una grilla configurada
+  // Determina si hay algún día con horario configurado
   const selectedDayKey = selectedDate ? DAY_MAP[selectedDate.getDay()] : null;
   const selectedDaySchedule = scheduleConfig?.days.find(d => d.day_of_week === selectedDayKey && d.enabled);
-  const useSlotPicker = !!selectedDaySchedule;
+  const hasAnySchedule = !!scheduleConfig?.days.some(d => d.enabled);
+  // Usar SlotPicker si hay algún horario configurado (para poder navegar días)
+  const useSlotPicker = hasAnySchedule;
+  // Fallback schedule para días sin horario: usar el primero disponible
+  const fallbackSchedule = scheduleConfig?.days.find(d => d.enabled);
 
   const handleAddClick = () => setShowQuickModal(true);
 
@@ -175,7 +179,7 @@ export function AppointmentsPage() {
       {showQuickModal && selectedDate && useSlotPicker && (
         <SlotPickerModal
           date={selectedDate}
-          daySchedule={selectedDaySchedule!}
+          daySchedule={selectedDaySchedule ?? fallbackSchedule!}
           patients={patients}
           appointments={apptsBySelectedDay}
           allAppointments={appointments}
