@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import type { DentalPiece, TreatmentType, Patient, Treatment } from '../types';
+import type { DentalPiece, TreatmentType, Patient, Treatment, Budget } from '../types';
 
 const TREATMENT_LABELS: Record<TreatmentType, string> = {
   NONE:               'Sano',
@@ -545,4 +545,95 @@ export function downloadFullHistoryPdf(patient: any, pieces: DentalPiece[], trea
   addFooter();
 
   doc.save(`historia_completa_${fullName.replace(/\s+/g, '_')}.pdf`);
+}
+
+export function downloadBudgetPdf(patientName: string, budget: Budget, professionalName: string) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const darkBlue: [number, number, number] = [10, 40, 90];
+  const blue: [number, number, number] = [0, 100, 200];
+
+  // Header
+  doc.setFillColor(...darkBlue); doc.rect(0, 0, W, 36, 'F');
+  doc.setFillColor(...blue); doc.rect(0, 33, W, 3, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
+  doc.text('ONE Smile', W / 2, 15, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+  doc.setTextColor(160, 195, 240);
+  doc.text('ODONTOLOGÍA TRIFIRO', W / 2, 22, { align: 'center' });
+  doc.setFontSize(9); doc.setTextColor(200, 225, 255);
+  doc.text('PRESUPUESTO', W / 2, 30, { align: 'center' });
+
+  // Info paciente y fecha
+  doc.setTextColor(...darkBlue); doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.text(patientName, 14, 48);
+  const dateStr = new Date(budget.created_at ?? Date.now()).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 120);
+  doc.text(dateStr, W - 14, 48, { align: 'right' });
+  doc.setDrawColor(...blue); doc.setLineWidth(0.4);
+  doc.line(14, 52, W - 14, 52);
+
+  // Profesional
+  if (professionalName) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80, 80, 100);
+    doc.text(`Profesional: ${professionalName}`, 14, 59);
+  }
+
+  // Tabla de ítems
+  let y = 68;
+  const colX = [14, 90, 130, 162];
+  doc.setFillColor(240, 245, 255); doc.rect(14, y - 6, W - 28, 10, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...blue);
+  ['Descripción', 'Cant.', 'Precio unit.', 'Subtotal'].forEach((h, i) => doc.text(h, colX[i], y));
+  y += 8;
+
+  let total = 0;
+  budget.items.forEach((item, idx) => {
+    if (y > H - 40) { doc.addPage(); y = 20; }
+    if (idx % 2 === 0) { doc.setFillColor(250, 252, 255); doc.rect(14, y - 5, W - 28, 9, 'F'); }
+    const subtotal = item.quantity * item.unit_price;
+    total += subtotal;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkBlue);
+    const lines = doc.splitTextToSize(item.description, 72);
+    doc.text(lines, colX[0], y);
+    doc.text(String(item.quantity), colX[1], y);
+    doc.text(`$${item.unit_price.toLocaleString('es-AR')}`, colX[2], y);
+    doc.text(`$${subtotal.toLocaleString('es-AR')}`, colX[3], y);
+    y += Math.max(lines.length * 6, 9);
+  });
+
+  // Total
+  doc.setDrawColor(...blue); doc.setLineWidth(0.3); doc.line(14, y + 2, W - 14, y + 2);
+  y += 10;
+  doc.setFillColor(...darkBlue); doc.rect(130, y - 6, W - 144, 12, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(255, 255, 255);
+  doc.text(`TOTAL: $${total.toLocaleString('es-AR')}`, W - 16, y + 1, { align: 'right' });
+
+  // Notas
+  if (budget.notes) {
+    y += 18;
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(100, 100, 120);
+    doc.text(`Observaciones: ${budget.notes}`, 14, y);
+  }
+
+  // Validez
+  y += 16;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 150, 170);
+  doc.text('Este presupuesto tiene una validez de 30 días desde la fecha de emisión.', 14, y);
+
+  // Firma
+  y += 20;
+  doc.setDrawColor(150, 150, 170); doc.setLineWidth(0.3);
+  doc.line(14, y, 80, y);
+  doc.setFontSize(8); doc.setTextColor(100, 100, 120);
+  doc.text('Firma del profesional', 14, y + 5);
+
+  // Footer
+  doc.setFillColor(...darkBlue); doc.rect(0, H - 14, W, 14, 'F');
+  doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(160, 195, 240);
+  doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
+
+  doc.save(`presupuesto_${patientName.replace(/\s+/g, '_')}.pdf`);
 }

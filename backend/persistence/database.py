@@ -232,6 +232,30 @@ def init_db():
                 (contract_id, box_id, shift, prof_id)
             )
 
+    # Tablas: presupuestos
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            professional_id INTEGER,
+            created_at TEXT NOT NULL,
+            notes TEXT,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS budget_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            budget_id INTEGER NOT NULL,
+            description TEXT NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            unit_price REAL NOT NULL DEFAULT 0,
+            FOREIGN KEY (budget_id) REFERENCES budgets(id) ON DELETE CASCADE
+        )
+    """)
+
     # Migración: agregar columna notes a appointments
     cursor.execute("PRAGMA table_info(appointments)")
     appt_cols = [r[1] for r in cursor.fetchall()]

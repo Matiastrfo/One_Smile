@@ -73,6 +73,24 @@ export const deletePatientPayment = async (patientId: number, paymentId: number)
   await api.delete(`/patients/${patientId}/payments/${paymentId}`);
 };
 
+export const getPatientBudgets = async (patientId: number) => {
+  const { data } = await api.get(`/patients/${patientId}/budgets`);
+  return data;
+};
+
+export const createPatientBudget = async (patientId: number, budget: any) => {
+  const { data } = await api.post(`/patients/${patientId}/budgets`, budget);
+  return data;
+};
+
+export const updateBudgetStatus = async (patientId: number, budgetId: number, status: string) => {
+  await api.patch(`/patients/${patientId}/budgets/${budgetId}/status`, { status });
+};
+
+export const deletePatientBudget = async (patientId: number, budgetId: number) => {
+  await api.delete(`/patients/${patientId}/budgets/${budgetId}`);
+};
+
 export const getPatientImages = async (patientId: number) => {
   const { data } = await api.get(`/patients/${patientId}/images`);
   return data;

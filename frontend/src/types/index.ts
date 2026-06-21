@@ -106,6 +106,24 @@ export const DAY_LABELS: Record<DayOfWeek, string> = {
   THURSDAY: 'Jueves', FRIDAY: 'Viernes',
 };
 
+export interface BudgetItem {
+  id?: number;
+  budget_id?: number;
+  description: string;
+  quantity: number;
+  unit_price: number;
+}
+
+export interface Budget {
+  id?: number;
+  patient_id: number;
+  created_at?: string;
+  notes?: string;
+  status: string;
+  items: BudgetItem[];
+  professional_name?: string;
+}
+
 export interface PatientImage {
   id?: number;
   patient_id: number;

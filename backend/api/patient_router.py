@@ -6,6 +6,8 @@ from domain.patient_payment import PatientPayment
 from persistence.patient_payment_repository import PatientPaymentRepository
 from domain.patient_image import PatientImage
 from persistence.patient_image_repository import PatientImageRepository
+from domain.budget import Budget, BudgetItem
+from persistence.budget_repository import BudgetRepository
 from domain.patient import Patient
 from domain.user import User
 from services.patient_service import PatientService
@@ -141,6 +143,28 @@ def add_payment(patient_id: int, payment: PatientPayment, current_user: User = D
 def delete_payment(patient_id: int, payment_id: int, current_user: User = Depends(get_current_user)):
     PatientPaymentRepository().delete(payment_id)
     return {"message": "Pago eliminado"}
+
+@router.get("/{patient_id}/budgets", response_model=List[Budget])
+def get_budgets(patient_id: int, current_user: User = Depends(get_current_user)):
+    return BudgetRepository().get_by_patient(patient_id)
+
+@router.post("/{patient_id}/budgets", response_model=Budget)
+def create_budget(patient_id: int, budget: Budget, current_user: User = Depends(get_current_user)):
+    from datetime import date
+    budget.patient_id = patient_id
+    budget.professional_id = current_user.id
+    budget.created_at = str(date.today())
+    return BudgetRepository().create(budget)
+
+@router.patch("/{patient_id}/budgets/{budget_id}/status")
+def update_budget_status(patient_id: int, budget_id: int, body: dict, current_user: User = Depends(get_current_user)):
+    BudgetRepository().update_status(budget_id, body["status"])
+    return {"message": "ok"}
+
+@router.delete("/{patient_id}/budgets/{budget_id}")
+def delete_budget(patient_id: int, budget_id: int, current_user: User = Depends(get_current_user)):
+    BudgetRepository().delete(budget_id)
+    return {"message": "Presupuesto eliminado"}
 
 PATIENT_IMAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "images")
 os.makedirs(PATIENT_IMAGES_DIR, exist_ok=True)

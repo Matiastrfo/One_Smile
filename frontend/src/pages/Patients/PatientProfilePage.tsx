@@ -7,8 +7,9 @@ function whatsappUrl(phone: string) {
   return `https://wa.me/${phone.replace(/\D/g, "")}`;
 }
 import { useNavigate, useLocation } from "react-router-dom";
-import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment, getPatientImages, uploadPatientImage, deletePatientImage } from "../../api/patientApi";
-import type { PatientAccount, PatientImage } from "../../types";
+import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget } from "../../api/patientApi";
+import type { PatientAccount, PatientImage, Budget, BudgetItem } from "../../types";
+import { downloadBudgetPdf } from "../../utils/odontogramPdf";
 import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf } from "../../utils/odontogramPdf";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram from "../../components/Odontogram/Odontogram";
@@ -20,7 +21,10 @@ export function PatientProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram" | "cuenta-corriente" | "imagenes">((location.state as any)?.openTab ?? "odontogram");
+  const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram" | "cuenta-corriente" | "imagenes" | "presupuesto">((location.state as any)?.openTab ?? "odontogram");
+  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
+  const [budgetNotes, setBudgetNotes] = useState("");
+  const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [imageFilter, setImageFilter] = useState<string>("ALL");
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [imgUploadForm, setImgUploadForm] = useState({ treatment_type: "GENERAL", description: "" });
@@ -275,6 +279,33 @@ export function PatientProfilePage() {
   });
 
 
+  const { data: budgets = [] } = useQuery<Budget[]>({
+    queryKey: ["patientBudgets", patientId],
+    queryFn: () => getPatientBudgets(patientId),
+    enabled: activeTab === "presupuesto",
+  });
+
+  const createBudgetMutation = useMutation({
+    mutationFn: () => createPatientBudget(patientId, { patient_id: patientId, status: "PENDING", notes: budgetNotes, items: budgetItems.filter(i => i.description.trim()) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patientBudgets", patientId] });
+      setBudgetItems([{ description: "", quantity: 1, unit_price: 0 }]);
+      setBudgetNotes("");
+      setShowBudgetForm(false);
+    },
+    onError: () => alert("Error al guardar el presupuesto"),
+  });
+
+  const deleteBudgetMutation = useMutation({
+    mutationFn: (id: number) => deletePatientBudget(patientId, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientBudgets", patientId] }),
+  });
+
+  const updateBudgetStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) => updateBudgetStatus(patientId, id, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientBudgets", patientId] }),
+  });
+
   const { data: patientImages = [] } = useQuery<PatientImage[]>({
     queryKey: ["patientImages", patientId],
     queryFn: () => getPatientImages(patientId),
@@ -370,6 +401,12 @@ export function PatientProfilePage() {
           className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "cuenta-corriente" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
         >
           <Wallet className="h-4 w-4" /> Cuenta Corriente
+        </button>
+        <button
+          onClick={() => setActiveTab("presupuesto")}
+          className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "presupuesto" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
+        >
+          <FileText className="h-4 w-4" /> Presupuesto
         </button>
         <button
           onClick={() => setActiveTab("history")}
@@ -972,6 +1009,135 @@ export function PatientProfilePage() {
           </div>
         </div>
       )}
+
+        {/* TAB: Presupuesto */}
+        {activeTab === "presupuesto" && (
+          <div className="space-y-5 max-w-3xl">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-bold">Presupuestos del paciente</h3>
+              <button onClick={() => setShowBudgetForm(v => !v)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30">
+                <Plus className="h-4 w-4" /> Nuevo presupuesto
+              </button>
+            </div>
+
+            {showBudgetForm && (
+              <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-4">
+                <h4 className="font-semibold text-sm">Nuevo presupuesto</h4>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[1fr_80px_110px_36px] gap-2 text-xs font-semibold text-muted-foreground px-1">
+                    <span>Descripción</span><span className="text-center">Cant.</span><span className="text-center">Precio unit.</span><span />
+                  </div>
+                  {budgetItems.map((item, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_80px_110px_36px] gap-2">
+                      <input type="text" value={item.description} placeholder="Ej: Extracción pieza 36"
+                        onChange={e => setBudgetItems(items => items.map((it, j) => j === i ? { ...it, description: e.target.value } : it))}
+                        className="border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                      <input type="number" min="1" value={item.quantity}
+                        onChange={e => setBudgetItems(items => items.map((it, j) => j === i ? { ...it, quantity: parseInt(e.target.value) || 1 } : it))}
+                        className="border border-input bg-background px-2 py-2 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary" />
+                      <input type="number" min="0" value={item.unit_price}
+                        onChange={e => setBudgetItems(items => items.map((it, j) => j === i ? { ...it, unit_price: parseFloat(e.target.value) || 0 } : it))}
+                        className="border border-input bg-background px-2 py-2 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary" />
+                      <button onClick={() => setBudgetItems(items => items.length > 1 ? items.filter((_, j) => j !== i) : items)}
+                        className="flex items-center justify-center h-9 w-9 rounded-xl border border-border/60 hover:bg-rose-50 hover:text-rose-500 transition-colors">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button onClick={() => setBudgetItems(items => [...items, { description: "", quantity: 1, unit_price: 0 }])}
+                    className="text-xs text-primary hover:underline font-medium">+ Agregar ítem</button>
+                </div>
+                <div className="flex justify-end">
+                  <span className="text-sm font-bold">Total: ${budgetItems.reduce((s, i) => s + i.quantity * i.unit_price, 0).toLocaleString('es-AR')}</span>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Observaciones (opcional)</label>
+                  <input type="text" value={budgetNotes} onChange={e => setBudgetNotes(e.target.value)}
+                    placeholder="Ej: Precio sujeto a cambio según evolución"
+                    className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setShowBudgetForm(false)} className="px-4 py-2 border rounded-xl text-sm hover:bg-muted/50">Cancelar</button>
+                  <button onClick={() => createBudgetMutation.mutate()}
+                    disabled={createBudgetMutation.isPending || budgetItems.every(i => !i.description.trim())}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50">
+                    {createBudgetMutation.isPending ? "Guardando..." : "Guardar presupuesto"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {budgets.length === 0 && !showBudgetForm ? (
+              <p className="text-center text-muted-foreground py-10 border border-dashed border-border/60 rounded-2xl text-sm">No hay presupuestos registrados.</p>
+            ) : budgets.map(budget => {
+              const total = budget.items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+              const STATUS_MAP: Record<string, { label: string; cls: string }> = {
+                PENDING:  { label: "Pendiente", cls: "bg-amber-100 text-amber-700 border-amber-300" },
+                ACCEPTED: { label: "Aceptado",  cls: "bg-green-100 text-green-700 border-green-300" },
+                REJECTED: { label: "Rechazado", cls: "bg-rose-100 text-rose-700 border-rose-300" },
+              };
+              const st = STATUS_MAP[budget.status] ?? STATUS_MAP.PENDING;
+              return (
+                <div key={budget.id} className="bg-card border border-border/60 rounded-2xl overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/20">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-sm font-semibold">Presupuesto #{budget.id}</span>
+                      <span className="text-xs text-muted-foreground">{budget.created_at}</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${st.cls}`}>{st.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select value={budget.status}
+                        onChange={e => updateBudgetStatusMutation.mutate({ id: budget.id!, status: e.target.value })}
+                        className="text-xs border border-input bg-background rounded-lg px-2 py-1 focus:outline-none">
+                        <option value="PENDING">Pendiente</option>
+                        <option value="ACCEPTED">Aceptado</option>
+                        <option value="REJECTED">Rechazado</option>
+                      </select>
+                      <button onClick={() => downloadBudgetPdf(report.patient.name, budget, budget.professional_name ?? "")}
+                        className="p-1.5 hover:bg-accent rounded-lg text-primary" title="Descargar PDF">
+                        <FileText className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => { if (confirm("¿Eliminar presupuesto?")) deleteBudgetMutation.mutate(budget.id!); }}
+                        className="p-1.5 hover:bg-rose-50 hover:text-rose-500 rounded-lg" title="Eliminar">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/30">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Descripción</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold text-muted-foreground">Cant.</th>
+                        <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">P. unit.</th>
+                        <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {budget.items.map(item => (
+                        <tr key={item.id}>
+                          <td className="px-4 py-2">{item.description}</td>
+                          <td className="px-4 py-2 text-center">{item.quantity}</td>
+                          <td className="px-4 py-2 text-right">${item.unit_price.toLocaleString('es-AR')}</td>
+                          <td className="px-4 py-2 text-right font-medium">${(item.quantity * item.unit_price).toLocaleString('es-AR')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-border/60 bg-muted/20">
+                        <td colSpan={3} className="px-4 py-2.5 text-right font-bold text-sm">TOTAL</td>
+                        <td className="px-4 py-2.5 text-right font-black text-base text-primary">${total.toLocaleString('es-AR')}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                  {budget.notes && <p className="px-4 py-2 text-xs text-muted-foreground italic border-t">{budget.notes}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+      </div>
 
       {/* Lightbox */}
       {lightboxImg && (
