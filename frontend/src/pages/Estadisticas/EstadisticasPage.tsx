@@ -24,24 +24,22 @@ function pct(n: number, total: number) {
   return total === 0 ? 0 : Math.round((n / total) * 100);
 }
 
+const BAR_COLORS = ["#22c55e", "#f43f5e", "#f59e0b", "#60a5fa"];
+
 function BarGroup({ label, attended, absent, cancelled, pending, max }: {
   label: string; attended: number; absent: number; cancelled: number; pending: number; max: number;
 }) {
   const total = attended + absent + cancelled + pending;
   return (
-    <div className="flex items-end gap-1 flex-col w-full">
+    <div className="flex flex-col items-center gap-1 min-w-[32px]">
+      <span className="text-[10px] font-bold text-foreground">{total > 0 ? total : ""}</span>
       <div className="flex items-end gap-0.5 h-24 w-full">
-        {[
-          { v: attended,  c: "bg-green-500" },
-          { v: absent,    c: "bg-rose-500" },
-          { v: cancelled, c: "bg-amber-500" },
-          { v: pending,   c: "bg-blue-400" },
-        ].map((s, i) => (
-          <div key={i} className="flex-1 rounded-t-sm transition-all" style={{ height: max > 0 ? `${(s.v / max) * 96}px` : "0", background: s.c.replace("bg-","") }} />
+        {[attended, absent, cancelled, pending].map((v, i) => (
+          <div key={i} className="flex-1 rounded-t-sm transition-all"
+            style={{ height: max > 0 ? `${(v / max) * 96}px` : "0", backgroundColor: BAR_COLORS[i] }} />
         ))}
       </div>
-      <span className="text-[10px] text-muted-foreground text-center w-full">{label}</span>
-      <span className="text-[10px] font-bold text-center w-full">{total}</span>
+      <span className="text-[10px] text-muted-foreground text-center leading-tight">{label}</span>
     </div>
   );
 }
@@ -159,8 +157,8 @@ export function EstadisticasPage() {
             {stats.by_dow.filter(d => d.day !== "Dom" && d.day !== "Sáb").map(d => (
               <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
                 <span className="text-xs font-bold text-muted-foreground">{d.total}</span>
-                <div className="w-full rounded-t-lg bg-primary/80 transition-all"
-                  style={{ height: `${(d.total / maxDow) * 96}px`, minHeight: d.total > 0 ? "4px" : "0" }} />
+                <div className="w-full rounded-t-lg transition-all"
+                  style={{ height: `${(d.total / maxDow) * 96}px`, minHeight: d.total > 0 ? "4px" : "0", backgroundColor: "#6366f1" }} />
                 <span className="text-xs text-muted-foreground">{d.day}</span>
               </div>
             ))}
