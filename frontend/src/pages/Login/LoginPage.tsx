@@ -46,7 +46,12 @@ export function LoginPage() {
       navigate("/");
     },
     onError: (error: any) => {
-      setErrorMsg(error.response?.data?.detail || "Error al iniciar sesión");
+      const detail = error.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        setErrorMsg(detail.map((d: any) => d.msg || JSON.stringify(d)).join(", "));
+      } else {
+        setErrorMsg(typeof detail === "string" ? detail : "Error al iniciar sesión");
+      }
     }
   });
 
