@@ -6,10 +6,6 @@ const COLOR_HEX: Record<string, string> = {
   GREEN: '#22c55e',
 };
 
-const WHOLE_TOOTH_TREATMENTS: TreatmentType[] = [
-  'EXTRACTION_PENDING', 'EXTRACTED', 'ABSENT', 'CROWN',
-  'RX', 'IMPLANT', 'PERNO', 'ENDODONCIA', 'PROTESIS', 'PROTESIS_PARCIAL', 'PUENTE',
-];
 
 const FACE_PATHS: { face: ToothFace; points: string }[] = [
   { face: 'top',    points: '0,0 100,0 75,25 25,25' },

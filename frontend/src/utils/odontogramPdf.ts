@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import type { DentalPiece, TreatmentType, Patient, Treatment, Budget } from '../types';
+import type { DentalPiece, TreatmentType, Treatment, Budget } from '../types';
 
 const TREATMENT_LABELS: Record<TreatmentType, string> = {
   NONE:               'Sano',

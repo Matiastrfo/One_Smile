@@ -8,7 +8,7 @@ const DAY_MAP: Record<number, string> = {
   4: "THURSDAY", 5: "FRIDAY", 6: "SATURDAY",
 };
 const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const MONTH_LABELS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+// const MONTH_LABELS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
 interface Props {
   date: Date;

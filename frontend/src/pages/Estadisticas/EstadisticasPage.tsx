@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart2, Users, CheckCircle, XCircle, Clock, Ban } from "lucide-react";
 import api from "../../api/axios";
@@ -45,7 +45,7 @@ function BarGroup({ label, attended, absent, cancelled, pending, max }: {
 }
 
 export function EstadisticasPage() {
-  const [period, setPeriod] = useState<"all" | "month" | "year">("year");
+  // const [period, setPeriod] = useState<"all" | "month" | "year">("year");
 
   const { data: stats, isLoading } = useQuery<Stats>({
     queryKey: ["appointmentStats"],
