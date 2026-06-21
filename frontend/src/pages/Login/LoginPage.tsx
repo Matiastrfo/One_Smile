@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Lock, User, AlertCircle, Eye, EyeOff } from "lucide-react";
 import api from "../../api/axios";
@@ -6,13 +6,34 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
 
+const SAVED_USERS_KEY = "onesmile_saved_users";
+
+function getSavedUsers(): string[] {
+  try { return JSON.parse(localStorage.getItem(SAVED_USERS_KEY) || "[]"); } catch { return []; }
+}
+
+function saveUser(username: string) {
+  const users = getSavedUsers().filter(u => u.toLowerCase() !== username.toLowerCase());
+  users.unshift(username);
+  localStorage.setItem(SAVED_USERS_KEY, JSON.stringify(users.slice(0, 5)));
+}
+
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [savedUsers, setSavedUsers] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => { setSavedUsers(getSavedUsers()); }, []);
+
+  const filtered = savedUsers.filter(u =>
+    u.toLowerCase().includes(username.toLowerCase()) && u.toLowerCase() !== username.toLowerCase()
+  );
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -20,6 +41,7 @@ export function LoginPage() {
       return data;
     },
     onSuccess: (data) => {
+      saveUser(username);
       login(data.access_token, { id: data.id ?? 0, email: data.email ?? "", role: data.role, name: data.name ?? "" });
       navigate("/");
     },
@@ -31,7 +53,14 @@ export function LoginPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    setShowSuggestions(false);
     loginMutation.mutate();
+  };
+
+  const selectUser = (u: string) => {
+    setUsername(u);
+    setShowSuggestions(false);
+    setTimeout(() => document.getElementById("password-input")?.focus(), 50);
   };
 
   return (
@@ -60,15 +89,33 @@ export function LoginPage() {
                   <User className="h-5 w-5" />
                 </div>
                 <input
+                  ref={inputRef}
                   type="text"
                   name="username"
                   autoComplete="off"
                   required
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => { setUsername(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   className="w-full pl-11 pr-4 py-3 bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm font-medium text-foreground placeholder:text-muted-foreground"
-                  placeholder="Tu nombre de usuario"
+                  placeholder="Tu nombre o email"
                 />
+                {showSuggestions && filtered.length > 0 && (
+                  <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                    {filtered.map(u => (
+                      <button
+                        key={u}
+                        type="button"
+                        onMouseDown={() => selectUser(u)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-accent transition-colors"
+                      >
+                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="truncate">{u}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
