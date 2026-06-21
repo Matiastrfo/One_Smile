@@ -558,11 +558,14 @@ export function PatientProfilePage() {
                 GENERAL: "General", CARIES: "Caries", FILLING: "Obturación", EXTRACTION_PENDING: "Extracción indicada",
                 EXTRACTED: "Extraído", CROWN: "Corona", RX: "Radiografía", IMPLANT: "Implante",
                 PERNO: "Perno", ENDODONCIA: "Endodoncia", PROTESIS: "Prótesis",
-                PROTESIS_PARCIAL: "Prótesis parcial", PUENTE: "Puente",
+                PROTESIS_PARCIAL: "Prótesis parcial", PUENTE: "Puente", CARESTREAM: "Scanner Carestream",
               };
-              const types = Object.keys(IMAGE_LABELS);
-              const filtered = imageFilter === "ALL" ? patientImages : patientImages.filter(i => i.treatment_type === imageFilter);
-              const groups = types.filter(t => patientImages.some(i => i.treatment_type === t));
+              const clinicalTypes = Object.keys(IMAGE_LABELS).filter(t => t !== "CARESTREAM");
+              const types = clinicalTypes;
+              const clinicalImages = patientImages.filter(i => i.treatment_type !== "CARESTREAM");
+              const carestreamImages = patientImages.filter(i => i.treatment_type === "CARESTREAM");
+              const filtered = imageFilter === "ALL" ? clinicalImages : clinicalImages.filter(i => i.treatment_type === imageFilter);
+              const groups = types.filter(t => clinicalImages.some(i => i.treatment_type === t));
               return (
                 <div className="space-y-4">
                   <h3 className="text-sm font-bold text-foreground">Imágenes clínicas</h3>
@@ -598,7 +601,7 @@ export function PatientProfilePage() {
                     </button>
                   </div>
 
-                  {patientImages.length === 0 ? (
+                  {clinicalImages.length === 0 ? (
                     <p className="text-center text-sm text-muted-foreground py-6 border border-dashed border-border/60 rounded-xl">No hay imágenes cargadas.</p>
                   ) : (
                     <>
@@ -606,7 +609,7 @@ export function PatientProfilePage() {
                       <div className="flex flex-wrap gap-2">
                         <button onClick={() => setImageFilter("ALL")}
                           className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${imageFilter === "ALL" ? "bg-primary text-primary-foreground border-primary" : "border-border/60 hover:bg-accent"}`}>
-                          Todos ({patientImages.length})
+                          Todos ({clinicalImages.length})
                         </button>
                         {groups.map(t => (
                           <button key={t} onClick={() => setImageFilter(t)}
@@ -648,6 +651,45 @@ export function PatientProfilePage() {
                         );
                       })}
                     </>
+                  )}
+                {/* Sección Scanner Carestream */}
+                <div className="pt-4 border-t border-border/60 space-y-3">
+                  <h3 className="text-sm font-bold text-foreground">Scanner Carestream</h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{carestreamImages.length} imagen{carestreamImages.length !== 1 ? "es" : ""}</span>
+                    <button
+                      onClick={() => {
+                        setImgUploadForm({ treatment_type: "CARESTREAM", description: "" });
+                        imageInputRef.current?.click();
+                      }}
+                      disabled={uploadImageMutation.isPending}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-xl text-xs font-semibold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Subir scanner
+                    </button>
+                  </div>
+                  {carestreamImages.length === 0 ? (
+                    <p className="text-center text-xs text-muted-foreground py-5 border border-dashed border-border/60 rounded-xl">No hay scanners cargados.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {carestreamImages.map(img => (
+                        <div key={img.id} className="rounded-xl border border-border/60 bg-card overflow-hidden">
+                          <div className="relative aspect-square">
+                            <img src={`${API_BASE}${img.file_path}`} alt="Scanner Carestream"
+                              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)} />
+                            <div className="absolute top-1 left-1 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">{img.date}</div>
+                          </div>
+                          {img.description && <p className="text-[10px] text-muted-foreground px-2 pt-1 truncate">{img.description}</p>}
+                          <button
+                            onClick={() => { if (confirm("¿Eliminar este scanner?")) deleteImageMutation.mutate(img.id!); }}
+                            className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 transition-colors"
+                          >
+                            <Trash2 className="h-3 w-3" /> Eliminar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               );
