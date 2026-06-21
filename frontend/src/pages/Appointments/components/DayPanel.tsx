@@ -83,9 +83,10 @@ export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, 
                   <p className="font-semibold text-foreground text-sm leading-tight truncate">{getPatientName(appt.patient_id)}</p>
                   {appt.reason && <p className="text-xs text-muted-foreground mt-0.5 truncate">{appt.reason}</p>}
                   {appt.notes && (
-                    <p className="text-xs text-muted-foreground mt-1 italic flex items-center gap-1">
-                      <StickyNote className="h-3 w-3 shrink-0" /> {appt.notes}
-                    </p>
+                    <div className="mt-1.5 flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                      <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-800 leading-snug">{appt.notes}</p>
+                    </div>
                   )}
                   <Select value={status} onValueChange={val => handleStatusChange(appt.id!, val, appt.notes)}>
                     <SelectTrigger className={`mt-2 w-fit gap-1.5 cursor-pointer text-xs font-semibold tracking-wide uppercase border rounded-full px-3 py-1 h-auto shadow-sm focus:ring-offset-1 ${cls}`}>
