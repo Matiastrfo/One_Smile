@@ -15,8 +15,8 @@ export const deleteAppointment = async (id: number): Promise<void> => {
   await api.delete(`/appointments/${id}`);
 };
 
-export const updateAppointmentStatus = async (id: number, status: string): Promise<void> => {
-  await api.patch(`/appointments/${id}/status`, { status });
+export const updateAppointmentStatus = async (id: number, status: string, notes?: string): Promise<void> => {
+  await api.patch(`/appointments/${id}/status`, { status, notes });
 };
 
 export const quickCreateAppointment = async (body: {

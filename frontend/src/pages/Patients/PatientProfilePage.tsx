@@ -9,7 +9,7 @@ function whatsappUrl(phone: string) {
 import { useNavigate, useLocation } from "react-router-dom";
 import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment, getPatientImages, uploadPatientImage, deletePatientImage } from "../../api/patientApi";
 import type { PatientAccount, PatientImage } from "../../types";
-import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf } from "../../utils/odontogramPdf";
+import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf } from "../../utils/odontogramPdf";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram from "../../components/Odontogram/Odontogram";
 
@@ -335,6 +335,13 @@ export function PatientProfilePage() {
               <h2 className="text-3xl font-bold tracking-tight">Historia Clínica</h2>
               <p className="text-muted-foreground">Paciente: <span className="font-semibold text-foreground">{report.patient.name}</span> (DNI: {report.patient.dni})</p>
             </div>
+            <button
+              onClick={() => downloadFullHistoryPdf({ ...(report.patient as any), ...medicalHistory, ...filiatorio }, odontogramPieces, report.treatments)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent border border-border/60 hover:bg-muted transition-colors text-sm font-semibold"
+              title="Exportar historia clínica completa en PDF"
+            >
+              <FileText className="h-4 w-4 text-primary" /> Exportar completo
+            </button>
             {(report.patient as any).phone && (
               <a
                 href={whatsappUrl((report.patient as any).phone)}

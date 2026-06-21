@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import type { DentalPiece, TreatmentType, Patient } from '../types';
+import type { DentalPiece, TreatmentType, Patient, Treatment } from '../types';
 
 const TREATMENT_LABELS: Record<TreatmentType, string> = {
   NONE:               'Sano',
@@ -381,4 +381,168 @@ export function downloadMedicalHistoryPdf(patient: any) {
   doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
 
   doc.save(`ficha_medica_${fullName.replace(/\s+/g, '_')}.pdf`);
+}
+
+export function downloadFullHistoryPdf(patient: any, pieces: DentalPiece[], treatments: Treatment[]) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const darkBlue: [number, number, number] = [10, 40, 90];
+  const blue: [number, number, number] = [0, 100, 200];
+  const fullName = [patient.name, patient.last_name].filter(Boolean).join(' ');
+
+  const addHeader = (subtitle: string) => {
+    doc.setFillColor(...darkBlue);
+    doc.rect(0, 0, W, 36, 'F');
+    doc.setFillColor(...blue);
+    doc.rect(0, 33, W, 3, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('ONE Smile', W / 2, 15, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(160, 195, 240);
+    doc.text('ODONTOLOGÍA TRIFIRO', W / 2, 22, { align: 'center' });
+    doc.setFontSize(9);
+    doc.setTextColor(200, 225, 255);
+    doc.text(subtitle, W / 2, 30, { align: 'center' });
+    doc.setTextColor(...darkBlue);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(fullName, 14, 48);
+    const dateStr = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 120);
+    doc.text(dateStr, W - 14, 48, { align: 'right' });
+    doc.setDrawColor(...blue);
+    doc.setLineWidth(0.4);
+    doc.line(14, 52, W - 14, 52);
+  };
+
+  const addFooter = () => {
+    doc.setFillColor(...darkBlue);
+    doc.rect(0, H - 14, W, 14, 'F');
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(160, 195, 240);
+    doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
+  };
+
+  const sectionTitle = (doc: jsPDF, title: string, y: number): number => {
+    doc.setFillColor(240, 245, 255);
+    doc.rect(14, y - 5, W - 28, 9, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...blue);
+    doc.text(title.toUpperCase(), 16, y);
+    return y + 12;
+  };
+
+  const field = (doc: jsPDF, label: string, value: string | undefined | null, y: number): number => {
+    if (!value?.trim()) return y;
+    if (y > H - 30) { doc.addPage(); addFooter(); y = 20; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...darkBlue);
+    doc.text(`${label}:`, 16, y);
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(60, 60, 80);
+    const lines = doc.splitTextToSize(value, W - 65);
+    doc.text(lines, 58, y);
+    return y + lines.length * 6 + 2;
+  };
+
+  // ── Página 1: Datos filiatorios + ficha médica ───────────────────────
+  addHeader('HISTORIA CLÍNICA COMPLETA');
+  let y = 62;
+
+  y = sectionTitle(doc, 'Datos Filiatorios', y);
+  y = field(doc, 'DNI', patient.dni, y);
+  y = field(doc, 'Fecha de nac.', patient.birth_date, y);
+  y = field(doc, 'Teléfono', patient.phone, y);
+  y = field(doc, 'Email', patient.email, y);
+  y = field(doc, 'Obra social', patient.social_security, y);
+  y = field(doc, 'N° obra social', patient.social_security_number, y);
+  y = field(doc, 'Dirección', patient.address, y);
+  y = field(doc, 'Localidad / Provincia', [patient.city, patient.province].filter(Boolean).join(', '), y);
+  y += 4;
+
+  y = sectionTitle(doc, 'Datos Médicos', y);
+  y = field(doc, 'Grupo sanguíneo', patient.blood_type, y);
+  y += 2;
+  y = sectionTitle(doc, 'Alergias', y);
+  if (patient.allergies?.trim()) { y = field(doc, '', patient.allergies, y); } else { doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(150,150,170); doc.text('Sin alergias', 16, y); y += 8; }
+  y += 2;
+  y = sectionTitle(doc, 'Enfermedades / Antecedentes', y);
+  if (patient.diseases?.trim()) { y = field(doc, '', patient.diseases, y); } else { doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(150,150,170); doc.text('Sin antecedentes', 16, y); y += 8; }
+  y += 2;
+  y = sectionTitle(doc, 'Medicamentos', y);
+  if (patient.medications?.trim()) { y = field(doc, '', patient.medications, y); } else { doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(150,150,170); doc.text('Sin medicamentos', 16, y); y += 8; }
+  y += 2;
+  y = sectionTitle(doc, 'Observaciones', y);
+  if (patient.observations?.trim()) { y = field(doc, '', patient.observations, y); } else { doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(150,150,170); doc.text('Sin observaciones', 16, y); }
+  addFooter();
+
+  // ── Página 2: Odontograma ────────────────────────────────────────────
+  doc.addPage();
+  addHeader('ODONTOGRAMA');
+  y = 62;
+  const treated = pieces.filter(p => p.treatment_type !== 'NONE');
+  if (treated.length === 0) {
+    doc.setFont('helvetica','italic'); doc.setFontSize(11); doc.setTextColor(120,120,140);
+    doc.text('Sin tratamientos registrados.', W / 2, 80, { align: 'center' });
+  } else {
+    const colX = [14, 36, 90, 145];
+    doc.setFillColor(240, 245, 255); doc.rect(14, y - 6, W - 28, 10, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...blue);
+    ['Pieza', 'Tratamiento', 'Estado', 'Arcada'].forEach((h, i) => doc.text(h, colX[i], y));
+    y += 8;
+    const upperSet = new Set(UPPER);
+    for (const piece of [...treated].sort((a, b) => a.tooth_number - b.tooth_number)) {
+      if (y > H - 30) { doc.addPage(); addFooter(); y = 20; }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.setTextColor(...darkBlue);
+      doc.text(String(piece.tooth_number), colX[0], y);
+      doc.text(TREATMENT_LABELS[piece.treatment_type] ?? piece.treatment_type, colX[1], y);
+      doc.text(piece.color ? COLOR_LABELS[piece.color] : '—', colX[2], y);
+      doc.text(upperSet.has(piece.tooth_number) ? 'Superior' : 'Inferior', colX[3], y);
+      y += 9;
+    }
+  }
+  addFooter();
+
+  // ── Página 3: Tratamientos ───────────────────────────────────────────
+  doc.addPage();
+  addHeader('HISTORIAL DE TRATAMIENTOS');
+  y = 62;
+  const visibleTreatments = treatments.filter(t => (t.price ?? 0) > 0 || !t.odontogram_type);
+  if (visibleTreatments.length === 0) {
+    doc.setFont('helvetica','italic'); doc.setFontSize(11); doc.setTextColor(120,120,140);
+    doc.text('Sin tratamientos registrados.', W / 2, 80, { align: 'center' });
+  } else {
+    const colX = [14, 42, 110, 162];
+    doc.setFillColor(240, 245, 255); doc.rect(14, y - 6, W - 28, 10, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...blue);
+    ['Fecha', 'Descripción', 'Profesional', 'Costo'].forEach((h, i) => doc.text(h, colX[i], y));
+    y += 8;
+    let total = 0;
+    visibleTreatments.forEach((t, idx) => {
+      if (y > H - 30) { doc.addPage(); addFooter(); y = 20; }
+      if (idx % 2 === 0) { doc.setFillColor(250, 252, 255); doc.rect(14, y - 5, W - 28, 9, 'F'); }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkBlue);
+      doc.text(t.date_time?.slice(0, 10) ?? '', colX[0], y);
+      const lines = doc.splitTextToSize(t.description, 65);
+      doc.text(lines, colX[1], y);
+      doc.setTextColor(100, 100, 120);
+      doc.text(t.professional_email ?? '—', colX[2], y);
+      doc.setTextColor(...darkBlue);
+      doc.text(`$${(t.price ?? 0).toFixed(0)}`, colX[3], y);
+      y += Math.max(lines.length * 5, 9);
+      total += t.price ?? 0;
+    });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...darkBlue);
+    doc.text(`Total: $${total.toFixed(0)}`, W - 14, y + 8, { align: 'right' });
+  }
+  addFooter();
+
+  doc.save(`historia_completa_${fullName.replace(/\s+/g, '_')}.pdf`);
 }

@@ -27,6 +27,7 @@ export interface Appointment {
   date_time: string;
   reason: string;
   status?: string;
+  notes?: string;
 }
 
 export interface Treatment {

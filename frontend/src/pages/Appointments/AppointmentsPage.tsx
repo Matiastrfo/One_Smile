@@ -81,7 +81,7 @@ export function AppointmentsPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: string }) => updateAppointmentStatus(id, status),
+    mutationFn: ({ id, status, notes }: { id: number; status: string; notes?: string }) => updateAppointmentStatus(id, status, notes),
     onSuccess: invalidate,
     onError: () => alert("Error al actualizar el estado"),
   });
@@ -150,7 +150,7 @@ export function AppointmentsPage() {
                 getPatientName={getPatientName}
                 onAdd={handleAddClick}
                 onDelete={handleDelete}
-                onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
+                onStatusChange={(id, status, notes) => statusMutation.mutate({ id, status, notes })}
               />
             ) : (
               <div className="hidden lg:flex flex-col items-center justify-center bg-card border border-border/60 rounded-2xl text-muted-foreground p-8 text-center">

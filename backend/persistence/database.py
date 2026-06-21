@@ -232,6 +232,12 @@ def init_db():
                 (contract_id, box_id, shift, prof_id)
             )
 
+    # Migración: agregar columna notes a appointments
+    cursor.execute("PRAGMA table_info(appointments)")
+    appt_cols = [r[1] for r in cursor.fetchall()]
+    if "notes" not in appt_cols:
+        cursor.execute("ALTER TABLE appointments ADD COLUMN notes TEXT")
+
     # Migración: agregar columnas a patients si no existen
     cursor.execute("PRAGMA table_info(patients)")
     patient_columns = [row[1] for row in cursor.fetchall()]

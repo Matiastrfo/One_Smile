@@ -56,6 +56,7 @@ def quick_appointment(body: QuickAppointmentRequest, current_user: User = Depend
 
 class StatusUpdateRequest(BaseModel):
     status: str
+    notes: Optional[str] = None
 
 @router.get("/stats")
 def get_appointment_stats(current_user: User = Depends(get_current_user)):
@@ -134,7 +135,7 @@ def update_appointment_status(appointment_id: int, request: StatusUpdateRequest,
     if appt.professional_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="No autorizado")
     try:
-        appointment_service.update_appointment_status(appointment_id, request.status)
+        appointment_service.repository.update_status(appointment_id, request.status, request.notes)
         return {"message": "Estado actualizado"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
