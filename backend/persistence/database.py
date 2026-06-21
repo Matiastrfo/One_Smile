@@ -339,6 +339,20 @@ def init_db():
         )
     """)
 
+    # Tabla: configuración de email SMTP
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS email_config (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            smtp_host TEXT NOT NULL DEFAULT 'smtp.gmail.com',
+            smtp_port INTEGER NOT NULL DEFAULT 587,
+            smtp_user TEXT NOT NULL DEFAULT '',
+            smtp_password TEXT NOT NULL DEFAULT '',
+            from_name TEXT NOT NULL DEFAULT 'OneSmile Odontología',
+            enabled INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+    cursor.execute("INSERT OR IGNORE INTO email_config (id) VALUES (1)")
+
     # Seed de admin por defecto
     # El password '12345' hasheado con bcrypt (usaremos un hash pre-generado de '12345' para simplicidad y consistencia en init_db)
     # Generado usando passlib.hash.bcrypt.hash("12345")

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Clock, CheckCircle2, XCircle, Trash2, FileText, Download, StickyNote, X } from "lucide-react";
+import { Plus, Clock, CheckCircle2, XCircle, Trash2, FileText, Download, StickyNote, X, Mail } from "lucide-react";
+import api from "../../../api/axios";
 import { Link } from "react-router-dom";
 import type { Appointment } from "../../../types";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../../../components/ui/select";
@@ -11,9 +12,11 @@ interface DayPanelProps {
   date: Date;
   appointments: Appointment[];
   getPatientName: (id: number) => string;
+  getPatientEmail?: (id: number) => string;
   onAdd: () => void;
   onDelete: (id: number) => void;
   onStatusChange: (id: number, status: string, notes?: string) => void;
+  professionalName?: string;
 }
 
 const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -26,11 +29,32 @@ const STATUS_CONFIG = {
   CANCELLED: { label: "Cancelado",  icon: XCircle,      cls: "bg-amber-500 text-white border-amber-500" },
 };
 
-export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, onStatusChange }: DayPanelProps) {
+export function DayPanel({ date, appointments, getPatientName, getPatientEmail, onAdd, onDelete, onStatusChange, professionalName }: DayPanelProps) {
   const { user } = useAuth();
   const sorted = [...appointments].sort((a, b) => a.date_time.localeCompare(b.date_time));
 
   const [notesModal, setNotesModal] = useState<{ apptId: number; status: string; notes: string } | null>(null);
+  const [sendingReminder, setSendingReminder] = useState<number | null>(null);
+
+  const sendReminder = async (appt: Appointment) => {
+    const email = getPatientEmail?.(appt.patient_id);
+    if (!email) { alert("Este paciente no tiene email cargado en sus datos filiatorios."); return; }
+    setSendingReminder(appt.id!);
+    try {
+      await api.post("/api/email/reminder", {
+        patient_name: getPatientName(appt.patient_id),
+        patient_email: email,
+        date_time: appt.date_time,
+        professional_name: professionalName ?? user?.name ?? user?.email ?? "",
+        reason: appt.reason ?? "",
+      });
+      alert("✅ Recordatorio enviado correctamente");
+    } catch (e: any) {
+      alert(e.response?.data?.detail || "Error al enviar el recordatorio. Verificá la configuración de email.");
+    } finally {
+      setSendingReminder(null);
+    }
+  };
 
   const handleStatusChange = (apptId: number, newStatus: string, currentNotes?: string) => {
     if (newStatus === "ATTENDED" || newStatus === "ABSENT") {
@@ -107,6 +131,14 @@ export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, 
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => sendReminder(appt)}
+                    disabled={sendingReminder === appt.id}
+                    className="p-1.5 text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                    title="Enviar recordatorio por email"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                  </button>
                   <button
                     onClick={() => setNotesModal({ apptId: appt.id!, status: appt.status ?? "PENDING", notes: appt.notes ?? "" })}
                     className="p-1.5 text-muted-foreground hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"

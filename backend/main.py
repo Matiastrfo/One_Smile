@@ -16,6 +16,8 @@ from api.box_payment_router import router as box_payment_router
 from api.contract_router import router as contract_router
 from api.schedule_config_router import router as schedule_config_router
 from api.profile_router import router as profile_router
+from api.email_router import router as email_router
+from services.scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="DentalManager API")
 
@@ -53,6 +55,11 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 @app.on_event("startup")
 def on_startup():
     init_db()
+    start_scheduler()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    stop_scheduler()
 
 app.include_router(patient_router, prefix="/patients", tags=["patients"])
 app.include_router(appointment_router, prefix="/appointments", tags=["appointments"])
@@ -63,6 +70,7 @@ app.include_router(box_payment_router, prefix="/api/admin/payments", tags=["paym
 app.include_router(contract_router, prefix="/api/admin/contracts", tags=["contracts"])
 app.include_router(schedule_config_router, prefix="/api/schedule-config", tags=["schedule-config"])
 app.include_router(profile_router, prefix="/api/profile", tags=["profile"])
+app.include_router(email_router, prefix="/api/email", tags=["email"])
 
 @app.get("/")
 def read_root():

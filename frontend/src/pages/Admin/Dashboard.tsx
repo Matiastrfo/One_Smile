@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldAlert, Trash2, UserPlus, Users, Package, Pencil, X } from "lucide-react";
+import { ShieldAlert, Trash2, UserPlus, Users, Package, Pencil, X, Mail, Eye, EyeOff } from "lucide-react";
 import api from "../../api/axios";
 import { getBoxes } from "../../api/boxApi";
 import type { Box } from "../../types";
@@ -50,6 +50,29 @@ export function AdminDashboard() {
     mutationFn: async (id: number) => { await api.delete(`/api/admin/users/${id}`); },
     onSuccess: invalidate,
     onError: (err: any) => alert(err.response?.data?.detail || "Error al eliminar"),
+  });
+
+  // Email config
+  const [showEmailPass, setShowEmailPass] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [emailForm, setEmailForm] = useState({ smtp_host: "smtp.gmail.com", smtp_port: 587, smtp_user: "", smtp_password: "", from_name: "OneSmile Odontología", enabled: false });
+
+  const { data: emailConfig } = useQuery({
+    queryKey: ["emailConfig"],
+    queryFn: async () => { const { data } = await api.get("/api/email/config"); return data; },
+    onSuccess: (data: any) => setEmailForm(prev => ({ ...prev, ...data, smtp_password: "" })),
+  } as any);
+
+  const saveEmailMutation = useMutation({
+    mutationFn: async () => { await api.put("/api/email/config", emailForm); },
+    onSuccess: () => alert("✅ Configuración de email guardada"),
+    onError: (err: any) => alert(err.response?.data?.detail || "Error al guardar"),
+  });
+
+  const testEmailMutation = useMutation({
+    mutationFn: async () => { await api.post("/api/email/test", { to: testEmailTo }); },
+    onSuccess: () => alert("✅ Email de prueba enviado correctamente"),
+    onError: (err: any) => alert(err.response?.data?.detail || "No se pudo enviar"),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -256,6 +279,77 @@ export function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* ── Configuración de Email ──────────────────────────────── */}
+      <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex items-center gap-3 px-5 py-4 border-b bg-muted/20">
+          <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-accent text-primary shrink-0">
+            <Mail className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="font-bold text-base">Recordatorios por Email</h3>
+            <p className="text-xs text-muted-foreground">Configurá el servidor SMTP para enviar recordatorios automáticos 24hs antes del turno</p>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-semibold">Activar recordatorios automáticos</label>
+            <button onClick={() => setEmailForm(f => ({ ...f, enabled: !f.enabled }))}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${emailForm.enabled ? "bg-primary" : "bg-muted"}`}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${emailForm.enabled ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { label: "Servidor SMTP", key: "smtp_host", placeholder: "smtp.gmail.com" },
+              { label: "Puerto", key: "smtp_port", placeholder: "587", type: "number" },
+              { label: "Email remitente", key: "smtp_user", placeholder: "tu@gmail.com" },
+              { label: "Nombre remitente", key: "from_name", placeholder: "OneSmile Odontología" },
+            ].map(f => (
+              <div key={f.key} className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">{f.label}</label>
+                <input type={f.type ?? "text"} value={(emailForm as any)[f.key]} placeholder={f.placeholder}
+                  onChange={e => setEmailForm(prev => ({ ...prev, [f.key]: f.type === "number" ? parseInt(e.target.value) : e.target.value }))}
+                  className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+            ))}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Contraseña / App Password</label>
+              <div className="relative">
+                <input type={showEmailPass ? "text" : "password"} value={emailForm.smtp_password} placeholder="••••••••••••"
+                  onChange={e => setEmailForm(prev => ({ ...prev, smtp_password: e.target.value }))}
+                  className="w-full border border-input bg-background px-3 py-2 pr-10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                <button onClick={() => setShowEmailPass(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showEmailPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Para Gmail usá una <a href="https://myaccount.google.com/apppasswords" target="_blank" className="text-primary underline">App Password</a></p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            <button onClick={() => saveEmailMutation.mutate()} disabled={saveEmailMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 disabled:opacity-50">
+              Guardar configuración
+            </button>
+            <div className="flex items-center gap-2">
+              <input type="email" value={testEmailTo} onChange={e => setTestEmailTo(e.target.value)}
+                placeholder="email@prueba.com"
+                className="border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary w-48" />
+              <button onClick={() => testEmailMutation.mutate()} disabled={!testEmailTo || testEmailMutation.isPending}
+                className="px-4 py-2 border border-border/60 rounded-xl text-sm font-medium hover:bg-muted/50 disabled:opacity-50">
+                {testEmailMutation.isPending ? "Enviando..." : "Enviar prueba"}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-muted/30 rounded-xl p-3 text-xs text-muted-foreground space-y-1">
+            <p>📧 El sistema envía recordatorios automáticamente cada hora a pacientes con turno en las próximas 24hs.</p>
+            <p>⚠️ El email se envía solo si el paciente tiene email cargado en sus datos filiatorios.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

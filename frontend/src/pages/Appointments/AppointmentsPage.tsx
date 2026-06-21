@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar as CalendarIcon, Settings } from "lucide-react";
@@ -17,6 +18,7 @@ const DAY_MAP: Record<number, string> = {
 };
 
 export function AppointmentsPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const location = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -91,6 +93,11 @@ export function AppointmentsPage() {
     return p ? p.name : `Paciente #${id}`;
   };
 
+  const getPatientEmail = (id: number) => {
+    const p = patients.find(p => p.id === id) as any;
+    return p?.email ?? "";
+  };
+
   const handleDelete = (id: number) => {
     if (window.confirm("¿Cancelar este turno?")) deleteMutation.mutate(id);
   };
@@ -148,6 +155,8 @@ export function AppointmentsPage() {
                 date={selectedDate}
                 appointments={apptsBySelectedDay}
                 getPatientName={getPatientName}
+                getPatientEmail={getPatientEmail}
+                professionalName={user?.name || user?.email}
                 onAdd={handleAddClick}
                 onDelete={handleDelete}
                 onStatusChange={(id, status, notes) => statusMutation.mutate({ id, status, notes })}
