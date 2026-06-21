@@ -81,7 +81,11 @@ export function DayPanel({ date, appointments, getPatientName, onAdd, onDelete, 
 
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-foreground text-sm leading-tight truncate">{getPatientName(appt.patient_id)}</p>
-                  {appt.reason && <p className="text-xs text-muted-foreground mt-0.5 truncate">{appt.reason}</p>}
+                  {appt.reason && (
+                    <p className="text-xs text-foreground/70 mt-0.5 font-medium">
+                      📋 {appt.reason}
+                    </p>
+                  )}
                   {appt.notes && (
                     <div className="mt-1.5 flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
                       <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
