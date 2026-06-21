@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert, Trash2, UserPlus, Users, Package, Pencil, X, Mail, Eye, EyeOff } from "lucide-react";
@@ -60,8 +60,13 @@ export function AdminDashboard() {
   const { data: emailConfig } = useQuery({
     queryKey: ["emailConfig"],
     queryFn: async () => { const { data } = await api.get("/api/email/config"); return data; },
-    onSuccess: (data: any) => setEmailForm(prev => ({ ...prev, ...data, smtp_password: "" })),
-  } as any);
+  });
+
+  useEffect(() => {
+    if (emailConfig) {
+      setEmailForm(prev => ({ ...prev, ...emailConfig, smtp_password: "" }));
+    }
+  }, [emailConfig]);
 
   const saveEmailMutation = useMutation({
     mutationFn: async () => { await api.put("/api/email/config", emailForm); },

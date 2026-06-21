@@ -11,8 +11,8 @@ router = APIRouter()
 class EmailConfig(BaseModel):
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
-    smtp_user: str
-    smtp_password: str
+    smtp_user: str = ""
+    smtp_password: str = ""
     from_name: str = "OneSmile Odontología"
     enabled: bool = False
 
