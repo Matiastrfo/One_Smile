@@ -580,20 +580,24 @@ export function PatientProfilePage() {
                         return (
                           <div key={group} className="space-y-2">
                             <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{IMAGE_LABELS[group] ?? group}</h4>
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                               {imgs.map(img => (
-                                <div key={img.id} className="group relative rounded-xl overflow-hidden border border-border/60 bg-muted/20 aspect-square">
-                                  <img src={`${API_BASE}${img.file_path}`} alt={img.description || IMAGE_LABELS[img.treatment_type]}
-                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
-                                    onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)} />
+                                <div key={img.id} className="rounded-xl border border-border/60 bg-card overflow-hidden">
+                                  <div className="relative aspect-square">
+                                    <img src={`${API_BASE}${img.file_path}`} alt={img.description || IMAGE_LABELS[img.treatment_type]}
+                                      className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                      onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)} />
+                                    <div className="absolute top-1 left-1 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">{img.date}</div>
+                                  </div>
                                   {img.description && (
-                                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate">{img.description}</div>
+                                    <p className="text-[10px] text-muted-foreground px-2 pt-1 truncate">{img.description}</p>
                                   )}
-                                  <button onClick={() => { if (confirm("¿Eliminar esta imagen?")) deleteImageMutation.mutate(img.id!); }}
-                                    className="absolute top-1 right-1 p-1 rounded-lg bg-black/60 text-white hover:bg-rose-600 transition-colors">
-                                    <Trash2 className="h-3 w-3" />
+                                  <button
+                                    onClick={() => { if (confirm("¿Eliminar esta imagen?")) deleteImageMutation.mutate(img.id!); }}
+                                    className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 transition-colors"
+                                  >
+                                    <Trash2 className="h-3 w-3" /> Eliminar
                                   </button>
-                                  <div className="absolute top-1 left-1 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded">{img.date}</div>
                                 </div>
                               ))}
                             </div>
