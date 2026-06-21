@@ -305,11 +305,30 @@ export function AdminDashboard() {
             </button>
           </div>
 
+          {/* Selector de proveedor */}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground">Proveedor de email</label>
+            <div className="flex gap-2">
+              {[
+                { label: "Gmail", host: "smtp.gmail.com", port: 587 },
+                { label: "Outlook / Hotmail", host: "smtp-mail.outlook.com", port: 587 },
+                { label: "Yahoo", host: "smtp.mail.yahoo.com", port: 587 },
+                { label: "Personalizado", host: "", port: 587 },
+              ].map(p => (
+                <button key={p.label} type="button"
+                  onClick={() => p.host && setEmailForm(f => ({ ...f, smtp_host: p.host, smtp_port: p.port }))}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${emailForm.smtp_host === p.host && p.host ? "bg-primary text-primary-foreground border-primary" : "border-border/60 hover:bg-accent"}`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { label: "Servidor SMTP", key: "smtp_host", placeholder: "smtp.gmail.com" },
               { label: "Puerto", key: "smtp_port", placeholder: "587", type: "number" },
-              { label: "Email remitente", key: "smtp_user", placeholder: "tu@gmail.com" },
+              { label: "Email remitente", key: "smtp_user", placeholder: "tu@proveedor.com" },
               { label: "Nombre remitente", key: "from_name", placeholder: "OneSmile Odontología" },
             ].map(f => (
               <div key={f.key} className="space-y-1">
@@ -329,7 +348,10 @@ export function AdminDashboard() {
                   {showEmailPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground">Para Gmail usá una <a href="https://myaccount.google.com/apppasswords" target="_blank" className="text-primary underline">App Password</a></p>
+              <p className="text-[10px] text-muted-foreground">
+                Gmail: usá una <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-primary underline">App Password</a> ·
+                Outlook/Hotmail: tu contraseña normal (con verificación en 2 pasos puede requerir contraseña de app)
+              </p>
             </div>
           </div>
 
