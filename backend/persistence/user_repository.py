@@ -9,7 +9,7 @@ class UserRepository:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, email, password_hash, role, name, avatar_path FROM users WHERE name = ? OR email = ? LIMIT 1",
+                "SELECT id, email, password_hash, role, name, avatar_path FROM users WHERE LOWER(name) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1",
                 (username, username)
             )
             row = cursor.fetchone()
