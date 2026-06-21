@@ -10,7 +10,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget } from "../../api/patientApi";
 import type { PatientAccount, PatientImage, Budget, BudgetItem } from "../../types";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
-import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf } from "../../utils/odontogramPdf";
+import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType } from "../../utils/odontogramPdf";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram from "../../components/Odontogram/Odontogram";
 
@@ -21,7 +21,8 @@ export function PatientProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram" | "cuenta-corriente" | "imagenes" | "presupuesto">((location.state as any)?.openTab ?? "odontogram");
+  const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram" | "cuenta-corriente" | "imagenes" | "presupuesto" | "consentimiento">((location.state as any)?.openTab ?? "odontogram");
+  const [consentTooth, setConsentTooth] = useState("");
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
   const [budgetNotes, setBudgetNotes] = useState("");
   const [showBudgetForm, setShowBudgetForm] = useState(false);
@@ -408,6 +409,12 @@ export function PatientProfilePage() {
           className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "presupuesto" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
         >
           <FileText className="h-4 w-4" /> Presupuesto
+        </button>
+        <button
+          onClick={() => setActiveTab("consentimiento")}
+          className={`px-4 py-2.5 font-medium text-sm flex items-center gap-2 rounded-xl transition-colors ${activeTab === "consentimiento" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-accent hover:text-primary"}`}
+        >
+          <FileText className="h-4 w-4" /> Consentimiento
         </button>
         <button
           onClick={() => setActiveTab("history")}
@@ -978,6 +985,60 @@ export function PatientProfilePage() {
           );
         })()}
 
+
+        {/* TAB: Consentimiento Informado */}
+        {activeTab === "consentimiento" && (() => {
+          const consents: { type: ConsentType; label: string; desc: string; color: string }[] = [
+            { type: "extraccion",     label: "Extracción dental",           desc: "Simple o quirúrgica",          color: "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100" },
+            { type: "endodoncia",     label: "Endodoncia",                  desc: "Tratamiento de conductos",     color: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" },
+            { type: "implante",       label: "Implante dental",             desc: "Colocación quirúrgica",        color: "bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100" },
+            { type: "protesis",       label: "Prótesis dental",             desc: "Fija o removible",             color: "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" },
+            { type: "periodoncia",    label: "Cirugía periodontal",         desc: "Tratamiento de encías",        color: "bg-green-50 border-green-200 text-green-700 hover:bg-green-100" },
+            { type: "blanqueamiento", label: "Blanqueamiento dental",       desc: "Tratamiento estético",         color: "bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100" },
+          ];
+          const profName = (report as any).professional_name ?? "";
+          return (
+            <div className="space-y-5 max-w-2xl">
+              <div>
+                <h3 className="text-base font-bold mb-1">Consentimiento Informado</h3>
+                <p className="text-sm text-muted-foreground">Seleccioná el tipo de tratamiento para generar el PDF con los datos del paciente, descripción del procedimiento, riesgos y firmas.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Pieza/s dentaria/s (opcional)</label>
+                <input type="text" value={consentTooth} onChange={e => setConsentTooth(e.target.value)}
+                  placeholder="Ej: 36, 37"
+                  className="w-48 border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {consents.map(c => (
+                  <button
+                    key={c.type}
+                    onClick={() => downloadConsentPdf(
+                      report.patient.name + ((report.patient as any).last_name ? ` ${(report.patient as any).last_name}` : ""),
+                      report.patient.dni ?? "",
+                      profName,
+                      c.type,
+                      consentTooth || undefined
+                    )}
+                    className={`flex items-center gap-3 p-4 rounded-2xl border text-left transition-colors ${c.color}`}
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/70 shrink-0">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{c.label}</p>
+                      <p className="text-xs opacity-70">{c.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-xs text-muted-foreground">Cada PDF incluye: datos del paciente y profesional, descripción del procedimiento, riesgos, cuidados post-operatorios y espacio para firma.</p>
+            </div>
+          );
+        })()}
 
         {/* TAB: Presupuesto */}
         {activeTab === "presupuesto" && (

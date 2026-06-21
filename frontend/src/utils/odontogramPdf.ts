@@ -637,3 +637,285 @@ export function downloadBudgetPdf(patientName: string, budget: Budget, professio
 
   doc.save(`presupuesto_${patientName.replace(/\s+/g, '_')}.pdf`);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSENTIMIENTO INFORMADO
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ConsentType = 'extraccion' | 'endodoncia' | 'implante' | 'protesis' | 'periodoncia' | 'blanqueamiento';
+
+const CONSENT_DATA: Record<ConsentType, { title: string; description: string; risks: string[]; postcare: string[] }> = {
+  extraccion: {
+    title: 'Extracción Dental',
+    description:
+      'La extracción dental es el procedimiento mediante el cual se retira una pieza dentaria de su alvéolo óseo. ' +
+      'Se realiza bajo anestesia local y puede ser simple (diente erupcionado) o quirúrgica (diente incluido o impactado). ' +
+      'El profesional ha evaluado que este procedimiento es la alternativa más conveniente para la salud bucal del paciente.',
+    risks: [
+      'Dolor e inflamación postoperatoria (normal durante los primeros 3-5 días).',
+      'Sangrado leve durante las primeras horas.',
+      'Alveolitis (infección del alvéolo) en casos poco frecuentes.',
+      'Parestesia transitoria (entumecimiento) de labio, lengua o mentón.',
+      'Daño a dientes adyacentes o restauraciones existentes.',
+      'Fractura de raíz o hueso alveolar (manejable durante el mismo acto).',
+      'Comunicación oroantral (en extracciones superiores posteriores), de manejo inmediato.',
+      'Necesidad de intervención adicional en caso de complicaciones.',
+    ],
+    postcare: [
+      'Morder el apósito de gasa durante 30-45 minutos sin retirarlo.',
+      'Aplicar hielo en forma intermitente (20 min sí / 20 min no) durante las primeras 24 hs.',
+      'No enjuagarse ni escupir con fuerza durante las primeras 24 hs.',
+      'Dieta blanda y fría el día del procedimiento.',
+      'No fumar ni consumir alcohol durante al menos 48 hs.',
+      'Tomar la medicación indicada según prescripción.',
+      'Concurrir a control en caso de sangrado excesivo, fiebre o dolor intenso.',
+    ],
+  },
+  endodoncia: {
+    title: 'Tratamiento de Conductos (Endodoncia)',
+    description:
+      'La endodoncia es el procedimiento que permite conservar una pieza dentaria mediante la eliminación del tejido pulpar ' +
+      '(nervio y vasos sanguíneos) del interior de los conductos radiculares, su limpieza, conformación y sellado. ' +
+      'Se realiza bajo anestesia local y puede requerir una o más sesiones según la complejidad del caso.',
+    risks: [
+      'Dolor e inflamación postoperatoria durante los primeros días.',
+      'Fractura de instrumento dentro del conducto (infrecuente, manejable).',
+      'Perforación radicular o de furca (requiere manejo inmediato).',
+      'Falla del tratamiento que puede requerir retratamiento o cirugía apical.',
+      'Reabsorción radicular en casos predisponentes.',
+      'Necesidad de restauración coronal (corona o reconstrucción) posterior al tratamiento.',
+      'En casos de infección activa, puede requerirse antibioticoterapia complementaria.',
+    ],
+    postcare: [
+      'Evitar masticar del lado tratado hasta colocar la restauración definitiva.',
+      'Tomar analgésicos según prescripción ante molestias postoperatorias.',
+      'Concurrir a las sesiones indicadas sin interrumpir el tratamiento.',
+      'Realizar la restauración definitiva dentro del plazo recomendado.',
+      'Controles radiográficos periódicos para evaluar la cicatrización apical.',
+    ],
+  },
+  implante: {
+    title: 'Colocación de Implante Dental',
+    description:
+      'El implante dental es una raíz artificial de titanio que se coloca quirúrgicamente en el hueso maxilar o mandibular ' +
+      'para reemplazar una pieza dentaria ausente. Sobre él se confecciona una corona, puente o prótesis. ' +
+      'El procedimiento se realiza bajo anestesia local y requiere un período de osteointegración (fusión con el hueso) ' +
+      'de aproximadamente 3 a 6 meses antes de colocar la restauración definitiva.',
+    risks: [
+      'Dolor, inflamación y hematoma postoperatorio.',
+      'Infección del sitio quirúrgico (periimplantitis).',
+      'Fracaso de la osteointegración (el implante no se fija al hueso).',
+      'Daño a estructuras anatómicas vecinas (nervio dentario inferior, seno maxilar).',
+      'Fractura del implante en situaciones de sobrecarga.',
+      'Necesidad de injerto óseo previo o simultáneo si el volumen óseo es insuficiente.',
+      'Resultados estéticos condicionados por la anatomía individual del paciente.',
+    ],
+    postcare: [
+      'Aplicar hielo las primeras 24 hs para reducir la inflamación.',
+      'Dieta blanda durante al menos 2 semanas.',
+      'Higiene oral cuidadosa sin cepillar directamente la zona operada los primeros días.',
+      'No fumar durante todo el período de osteointegración.',
+      'Tomar antibióticos y analgésicos según prescripción.',
+      'Concurrir a todos los controles postoperatorios indicados.',
+      'Evitar esfuerzos físicos intensos durante los primeros 3 días.',
+    ],
+  },
+  protesis: {
+    title: 'Confección de Prótesis Dental',
+    description:
+      'La prótesis dental es un dispositivo que reemplaza una o más piezas dentarias ausentes, ' +
+      'ya sea de forma fija (corona, puente) o removible (prótesis parcial o completa). ' +
+      'Su confección requiere múltiples sesiones de toma de impresiones, pruebas y ajustes para lograr ' +
+      'una correcta oclusión, fonética y estética.',
+    risks: [
+      'Período de adaptación que puede durar varias semanas.',
+      'Molestias o rozaduras iniciales que requieren ajustes.',
+      'Cambios en la fonética durante el período de adaptación.',
+      'Desgaste o fractura de la prótesis por uso o hábitos parafuncionales (bruxismo).',
+      'En prótesis fijas: sensibilidad dentaria en los dientes pilares.',
+      'Necesidad de rebase o reconstrucción con el tiempo por cambios en los tejidos de soporte.',
+      'En prótesis completas: reabsorción ósea progresiva del reborde alveolar.',
+    ],
+    postcare: [
+      'Retirar y limpiar la prótesis removible después de cada comida.',
+      'Mantenerla en agua o solución limpiadora durante la noche.',
+      'No doblar ni forzar los ganchos de la prótesis.',
+      'Concurrir a controles periódicos para evaluar ajuste y estado de la prótesis.',
+      'Ante fracturas o desprendimientos, no intentar repararlos con pegamentos comunes.',
+      'Informar al profesional ante cambios en la estabilidad o comodidad.',
+    ],
+  },
+  periodoncia: {
+    title: 'Tratamiento Periodontal (Cirugía de Encías)',
+    description:
+      'El tratamiento periodontal comprende los procedimientos destinados a tratar las enfermedades de los tejidos ' +
+      'de soporte del diente (encías y hueso). Puede incluir raspaje y alisado radicular, curetajes, ' +
+      'cirugías de acceso, injertos gingivales u óseos, según la severidad de la enfermedad periodontal. ' +
+      'Se realiza bajo anestesia local.',
+    risks: [
+      'Dolor e inflamación postoperatoria.',
+      'Sangrado durante y después del procedimiento.',
+      'Sensibilidad dentaria por exposición radicular.',
+      'Recesión gingival con mayor exposición de las raíces.',
+      'Movilidad dentaria transitoria.',
+      'Recidiva de la enfermedad periodontal sin adecuado mantenimiento.',
+      'En cirugías con injertos: fracaso del injerto (poco frecuente).',
+    ],
+    postcare: [
+      'Enjuagues con clorhexidina según indicación del profesional.',
+      'No cepillar la zona operada durante los primeros días.',
+      'Dieta blanda y fría las primeras 48 hs.',
+      'No fumar durante el período de cicatrización.',
+      'Tomar medicación según prescripción.',
+      'Mantener controles de mantenimiento periodontal cada 3-4 meses.',
+      'Higiene oral estricta como pilar fundamental del éxito del tratamiento.',
+    ],
+  },
+  blanqueamiento: {
+    title: 'Blanqueamiento Dental',
+    description:
+      'El blanqueamiento dental es un procedimiento estético que utiliza agentes químicos (peróxido de hidrógeno ' +
+      'o peróxido de carbamida) para aclarar el color de los dientes. Puede realizarse en el consultorio ' +
+      '(con luz de activación) o con cubetas individualizadas para el hogar, o mediante la combinación de ambos. ' +
+      'Los resultados varían según el tipo de mancha y la tonalidad natural de cada paciente.',
+    risks: [
+      'Sensibilidad dentaria transitoria durante y después del tratamiento.',
+      'Irritación gingival por contacto con el agente blanqueador.',
+      'Resultados variables según el tipo y origen de las manchas.',
+      'No actúa sobre restauraciones (coronas, carillas, obturaciones).',
+      'Posible recidiva del color con el tiempo, especialmente con café, té, vino o tabaco.',
+      'En dientes con fisuras o caries activas, puede producir hipersensibilidad intensa.',
+    ],
+    postcare: [
+      'Evitar alimentos y bebidas con pigmentos (café, té, vino, gaseosas) durante 48 hs.',
+      'No fumar durante al menos 48 hs posteriores al tratamiento.',
+      'Usar pasta dental para dientes sensibles si hay hipersensibilidad.',
+      'Usar los protectores con el gel según indicación del profesional.',
+      'Concurrir al control postratamiento para evaluar resultados.',
+      'Realizar retoques de mantenimiento según recomendación profesional.',
+    ],
+  },
+};
+
+export function downloadConsentPdf(
+  patientName: string,
+  patientDni: string,
+  professionalName: string,
+  consentType: ConsentType,
+  toothNumber?: string,
+) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const darkBlue: [number, number, number] = [10, 40, 90];
+  const blue: [number, number, number] = [0, 100, 200];
+  const data = CONSENT_DATA[consentType];
+
+  // ── Header ───────────────────────────────────────────────────────────
+  doc.setFillColor(...darkBlue); doc.rect(0, 0, W, 36, 'F');
+  doc.setFillColor(...blue); doc.rect(0, 33, W, 3, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
+  doc.text('ONE Smile', W / 2, 15, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+  doc.setTextColor(160, 195, 240);
+  doc.text('ODONTOLOGÍA TRIFIRO', W / 2, 22, { align: 'center' });
+  doc.setFontSize(9); doc.setTextColor(200, 225, 255);
+  doc.text('CONSENTIMIENTO INFORMADO', W / 2, 30, { align: 'center' });
+
+  // ── Título del procedimiento ─────────────────────────────────────────
+  doc.setTextColor(...darkBlue); doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+  doc.text(data.title.toUpperCase(), W / 2, 48, { align: 'center' });
+  doc.setDrawColor(...blue); doc.setLineWidth(0.5);
+  doc.line(14, 52, W - 14, 52);
+
+  // ── Datos del paciente ────────────────────────────────────────────────
+  let y = 60;
+  doc.setFillColor(245, 248, 255); doc.rect(14, y - 4, W - 28, 22, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...darkBlue);
+  doc.text('Paciente:', 18, y + 2);
+  doc.setFont('helvetica', 'normal');
+  doc.text(patientName, 42, y + 2);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DNI:', 18, y + 9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(patientDni || '—', 42, y + 9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Profesional:', 110, y + 2);
+  doc.setFont('helvetica', 'normal');
+  doc.text(professionalName || '—', 135, y + 2);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Fecha:', 110, y + 9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' }), 125, y + 9);
+  if (toothNumber) {
+    doc.setFont('helvetica', 'bold'); doc.text('Pieza/s:', 18, y + 16);
+    doc.setFont('helvetica', 'normal'); doc.text(toothNumber, 42, y + 16);
+  }
+  y += 28;
+
+  const writeBlock = (title: string, content: string | string[], bullet = false) => {
+    if (y > H - 50) { doc.addPage(); y = 20; }
+    doc.setFillColor(240, 245, 255); doc.rect(14, y - 4, W - 28, 9, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...blue);
+    doc.text(title.toUpperCase(), 16, y + 1);
+    y += 10;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(40, 40, 60);
+    if (Array.isArray(content)) {
+      content.forEach(item => {
+        if (y > H - 30) { doc.addPage(); y = 20; }
+        const lines = doc.splitTextToSize(`${bullet ? '• ' : ''}${item}`, W - 34);
+        doc.text(lines, 18, y);
+        y += lines.length * 5.5;
+      });
+    } else {
+      const lines = doc.splitTextToSize(content, W - 32);
+      doc.text(lines, 16, y);
+      y += lines.length * 5.5;
+    }
+    y += 4;
+  };
+
+  writeBlock('Descripción del Procedimiento', data.description);
+  writeBlock('Riesgos y Posibles Complicaciones', data.risks, true);
+  writeBlock('Cuidados Postoperatorios', data.postcare, true);
+
+  // ── Declaración ───────────────────────────────────────────────────────
+  if (y > H - 70) { doc.addPage(); y = 20; }
+  y += 4;
+  doc.setFillColor(255, 252, 240); doc.rect(14, y - 4, W - 28, 28, 'F');
+  doc.setDrawColor(200, 180, 0); doc.setLineWidth(0.4);
+  doc.rect(14, y - 4, W - 28, 28);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...darkBlue);
+  doc.text('DECLARACIÓN DEL PACIENTE', 16, y + 2);
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 60);
+  const declaracion = doc.splitTextToSize(
+    `Yo, ${patientName}, DNI ${patientDni || '____________________'}, declaro que he sido informado/a por el profesional ` +
+    `${professionalName || '____________________'} sobre el procedimiento de ${data.title.toLowerCase()}, sus ` +
+    `objetivos, riesgos, alternativas de tratamiento y cuidados postoperatorios. He comprendido la información ` +
+    `recibida y he podido formular las preguntas que consideré necesarias, obteniendo respuestas satisfactorias. ` +
+    `En consecuencia, otorgo mi consentimiento libre y voluntario para la realización del procedimiento.`,
+    W - 36
+  );
+  doc.text(declaracion, 16, y + 9);
+  y += 34;
+
+  // ── Firmas ────────────────────────────────────────────────────────────
+  if (y > H - 40) { doc.addPage(); y = 20; }
+  y += 8;
+  doc.setDrawColor(100, 100, 120); doc.setLineWidth(0.3);
+  doc.line(14, y, 85, y);
+  doc.line(115, y, W - 14, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(80, 80, 100);
+  doc.text('Firma del Paciente', 14, y + 5);
+  doc.text('Firma y Sello del Profesional', 115, y + 5);
+  doc.text(`Aclaración: ${patientName}`, 14, y + 11);
+  doc.text(`Aclaración: ${professionalName || '____________________'}`, 115, y + 11);
+
+  // ── Footer ────────────────────────────────────────────────────────────
+  doc.setFillColor(...darkBlue); doc.rect(0, H - 14, W, 14, 'F');
+  doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(160, 195, 240);
+  doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
+
+  doc.save(`consentimiento_${consentType}_${patientName.replace(/\s+/g, '_')}.pdf`);
+}
