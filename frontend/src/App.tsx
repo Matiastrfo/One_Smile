@@ -9,6 +9,7 @@ import { AdminDashboard } from "./pages/Admin/Dashboard";
 import { BoxesPage } from "./pages/Boxes/BoxesPage";
 import { PaymentsPage } from "./pages/Payments/PaymentsPage";
 import { CuentaCorrientePage } from "./pages/CuentaCorriente/CuentaCorrientePage";
+import { EstadisticasPage } from "./pages/Estadisticas/EstadisticasPage";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 
@@ -29,6 +30,7 @@ function App() {
                 <Route path="patients" element={<PatientsPage />} />
                 <Route path="patients/:id" element={<PatientProfilePage />} />
                 <Route path="cuenta-corriente" element={<CuentaCorrientePage />} />
+                <Route path="estadisticas" element={<EstadisticasPage />} />
                 
                 {/* Admin Only Route */}
                 <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>

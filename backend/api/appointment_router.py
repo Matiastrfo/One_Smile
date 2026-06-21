@@ -57,6 +57,73 @@ def quick_appointment(body: QuickAppointmentRequest, current_user: User = Depend
 class StatusUpdateRequest(BaseModel):
     status: str
 
+@router.get("/stats")
+def get_appointment_stats(current_user: User = Depends(get_current_user)):
+    from persistence.database import get_connection
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    pid = current_user.id
+
+    # Totales por estado
+    cursor.execute("""
+        SELECT status, COUNT(*) FROM appointments
+        WHERE professional_id = ? GROUP BY status
+    """, (pid,))
+    by_status = {row[0]: row[1] for row in cursor.fetchall()}
+
+    # Por mes (últimos 12 meses)
+    cursor.execute("""
+        SELECT substr(date_time,1,7) as month, status, COUNT(*) as cnt
+        FROM appointments WHERE professional_id = ?
+        GROUP BY month, status ORDER BY month DESC LIMIT 120
+    """, (pid,))
+    months: dict = {}
+    for month, status, cnt in cursor.fetchall():
+        if month not in months:
+            months[month] = {"month": month, "ATTENDED": 0, "ABSENT": 0, "CANCELLED": 0, "PENDING": 0, "total": 0}
+        months[month][status] = cnt
+        months[month]["total"] += cnt
+    by_month = sorted(months.values(), key=lambda x: x["month"])[-12:]
+
+    # Por día de semana
+    cursor.execute("""
+        SELECT CAST(strftime('%w', substr(date_time,1,10)) AS INTEGER) as dow, COUNT(*) as cnt
+        FROM appointments WHERE professional_id = ?
+        GROUP BY dow
+    """, (pid,))
+    DOW = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]
+    by_dow = {d: 0 for d in DOW}
+    for dow, cnt in cursor.fetchall():
+        by_dow[DOW[dow]] = cnt
+
+    # Top 10 pacientes por asistencia
+    cursor.execute("""
+        SELECT a.patient_id, p.name, p.last_name,
+               COUNT(*) as total,
+               SUM(CASE WHEN a.status='ATTENDED' THEN 1 ELSE 0 END) as attended,
+               SUM(CASE WHEN a.status='ABSENT' THEN 1 ELSE 0 END) as absent,
+               SUM(CASE WHEN a.status='CANCELLED' THEN 1 ELSE 0 END) as cancelled
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        WHERE a.professional_id = ?
+        GROUP BY a.patient_id ORDER BY total DESC LIMIT 10
+    """, (pid,))
+    top_patients = [
+        {"patient_id": r[0], "name": f"{r[1]} {r[2] or ''}".strip(),
+         "total": r[3], "attended": r[4], "absent": r[5], "cancelled": r[6]}
+        for r in cursor.fetchall()
+    ]
+
+    conn.close()
+    return {
+        "total": sum(by_status.values()),
+        "by_status": by_status,
+        "by_month": by_month,
+        "by_dow": [{"day": d, "total": by_dow[d]} for d in DOW],
+        "top_patients": top_patients,
+    }
+
 @router.patch("/{appointment_id}/status")
 def update_appointment_status(appointment_id: int, request: StatusUpdateRequest, current_user: User = Depends(get_current_user)):
     if request.status not in VALID_STATUSES:

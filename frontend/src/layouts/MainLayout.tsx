@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet } from "lucide-react";
+import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMyProfile, uploadAvatar, updateMyName } from "../api/profileApi";
@@ -54,6 +54,7 @@ export function MainLayout() {
     { to: "/appointments", icon: CalendarDays, label: "Agenda / Turnos" },
     { to: "/patients", icon: Users, label: "Gestión de Pacientes" },
     { to: "/cuenta-corriente", icon: Wallet, label: "Cuenta Corriente" },
+    { to: "/estadisticas", icon: BarChart2, label: "Estadísticas" },
   ];
 
   if (user?.role === "admin") {
