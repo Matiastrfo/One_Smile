@@ -692,6 +692,7 @@ export function PatientProfilePage() {
                     </div>
                   )}
                 </div>
+              </div>
               );
             })()}
           </div>
