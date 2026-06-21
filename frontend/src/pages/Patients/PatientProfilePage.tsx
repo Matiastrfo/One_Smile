@@ -1005,7 +1005,8 @@ export function PatientProfilePage() {
                       <input type="number" min="1" value={item.quantity}
                         onChange={e => setBudgetItems(items => items.map((it, j) => j === i ? { ...it, quantity: parseInt(e.target.value) || 1 } : it))}
                         className="border border-input bg-background px-2 py-2 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary" />
-                      <input type="number" min="0" value={item.unit_price}
+                      <input type="number" min="0" value={item.unit_price || ""}
+                        placeholder="0"
                         onChange={e => setBudgetItems(items => items.map((it, j) => j === i ? { ...it, unit_price: parseFloat(e.target.value) || 0 } : it))}
                         className="border border-input bg-background px-2 py-2 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary" />
                       <button onClick={() => setBudgetItems(items => items.length > 1 ? items.filter((_, j) => j !== i) : items)}
