@@ -161,7 +161,7 @@ export function downloadOdontogramPdf(patientName: string, pieces: DentalPiece[]
   doc.save(fileName);
 }
 
-export function downloadTreatmentsPdf(patientName: string, treatments: { date_time: string; professional_email?: string; description: string; price: number }[]) {
+export function downloadTreatmentsPdf(patientName: string, treatments: { date_time: string; professional_email?: string; description: string; price: number }[], returnBase64 = false): string | void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -262,6 +262,7 @@ export function downloadTreatmentsPdf(patientName: string, treatments: { date_ti
   doc.setTextColor(160, 195, 240);
   doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
 
+  if (returnBase64) return doc.output('datauristring').split(',')[1];
   doc.save(`tratamientos_${patientName.replace(/\s+/g, '_')}.pdf`);
 }
 
@@ -547,7 +548,20 @@ export function downloadFullHistoryPdf(patient: any, pieces: DentalPiece[], trea
   doc.save(`historia_completa_${fullName.replace(/\s+/g, '_')}.pdf`);
 }
 
-export function downloadBudgetPdf(patientName: string, budget: Budget, professionalName: string) {
+export function getBudgetPdfBase64(patientName: string, budget: Budget, professionalName: string): string {
+  return downloadBudgetPdf(patientName, budget, professionalName, true) as string;
+}
+
+export function getTreatmentsPdfBase64(patientName: string, treatments: { date_time: string; professional_email?: string; description: string; price: number }[]): string {
+  return downloadTreatmentsPdf(patientName, treatments, true) as string;
+}
+
+export function getConsentPdfBase64(patientName: string, patientDni: string, professionalName: string, consentType: ConsentType, toothNumber?: string): string {
+  return downloadConsentPdf(patientName, patientDni, professionalName, consentType, toothNumber, true) as string;
+}
+
+
+export function downloadBudgetPdf(patientName: string, budget: Budget, professionalName: string, returnBase64 = false): string | void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -635,6 +649,7 @@ export function downloadBudgetPdf(patientName: string, budget: Budget, professio
   doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(160, 195, 240);
   doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
 
+  if (returnBase64) return doc.output('datauristring').split(',')[1];
   doc.save(`presupuesto_${patientName.replace(/\s+/g, '_')}.pdf`);
 }
 
@@ -803,7 +818,8 @@ export function downloadConsentPdf(
   professionalName: string,
   consentType: ConsentType,
   toothNumber?: string,
-) {
+  returnBase64 = false,
+): string | void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -917,5 +933,6 @@ export function downloadConsentPdf(
   doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(160, 195, 240);
   doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
 
+  if (returnBase64) return doc.output('datauristring').split(',')[1];
   doc.save(`consentimiento_${consentType}_${patientName.replace(/\s+/g, '_')}.pdf`);
 }
