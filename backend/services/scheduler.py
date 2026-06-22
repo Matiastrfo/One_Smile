@@ -1,11 +1,15 @@
 import logging
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.executors.pool import ThreadPoolExecutor
 from persistence.database import get_connection
 from services.email_service import send_appointment_reminder, get_email_config
 
 logger = logging.getLogger(__name__)
-scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler(
+    executors={"default": ThreadPoolExecutor(1)},
+    timezone="America/Argentina/Buenos_Aires"
+)
 
 def check_and_send_reminders():
     config = get_email_config()
