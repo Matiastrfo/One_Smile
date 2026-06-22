@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, CalendarPlus, UserPlus, Users, Search } from "lucide-react";
 import type { Patient } from "../../../types";
 

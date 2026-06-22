@@ -32,7 +32,7 @@ interface ToothProps {
   overlays?: TreatmentOverlay[];
 }
 
-function renderOverlaySvg(type: TreatmentType, color: string | null, faces: string[], puenteRole?: 'abutment' | 'pontic') {
+function renderOverlaySvg(type: TreatmentType, color: string | null, faces: string[], _puenteRole?: 'abutment' | 'pontic') {
   const c = color ? COLOR_HEX[color] ?? color : '#000';
   switch (type) {
     case 'CROWN':

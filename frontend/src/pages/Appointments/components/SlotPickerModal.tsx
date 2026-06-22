@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, CalendarPlus, Clock, Users, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Patient, Appointment } from "../../../types";
 import type { DaySchedule, ScheduleConfig } from "../../../api/scheduleConfigApi";
