@@ -795,7 +795,6 @@ export function PatientProfilePage() {
                       <th className="px-4 py-3 font-semibold">Fecha</th>
                       <th className="px-4 py-3 font-semibold">Profesional</th>
                       <th className="px-4 py-3 font-semibold">Descripción</th>
-                      <th className="px-4 py-3 font-semibold">Costo</th>
                       <th className="px-4 py-3 font-semibold text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -805,7 +804,6 @@ export function PatientProfilePage() {
                         <td className="px-4 py-3 whitespace-nowrap">{t.date_time}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{t.professional_email || 'Desconocido'}</td>
                         <td className="px-4 py-3">{t.description}</td>
-                        <td className="px-4 py-3 font-medium">${t.price.toFixed(2)}</td>
                         <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
                           <button onClick={() => openTreatmentModalForEdit(t)} className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-accent text-primary hover:bg-accent/70 transition-colors" title="Editar tratamiento">
                             <Pencil className="h-4 w-4" />
@@ -1280,10 +1278,6 @@ export function PatientProfilePage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Descripción</label>
                   <textarea required value={treatmentData.description} onChange={e => setTreatmentData({...treatmentData, description: e.target.value})} className="w-full border rounded-xl px-3 py-2 bg-background h-24 resize-none focus:ring-2 focus:ring-primary focus:border-primary outline-none" placeholder="Detalle del tratamiento..."></textarea>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Costo ($)</label>
-                  <input type="text" inputMode="decimal" required value={treatmentData.price} onChange={e => setTreatmentData({...treatmentData, price: e.target.value})} placeholder="0.00" className="w-full border rounded-xl px-3 py-2 bg-background focus:ring-2 focus:ring-primary focus:border-primary outline-none" />
                 </div>
               </div>
               <div className="mt-6 flex justify-end gap-3">
