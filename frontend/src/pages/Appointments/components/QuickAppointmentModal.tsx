@@ -15,9 +15,6 @@ interface QuickAppointmentModalProps {
 function pad(n: number) { return String(n).padStart(2, "0"); }
 
 export function QuickAppointmentModal({ date, patients, preselectedPatientId, onClose, onSubmitNew, onSubmitExisting, isPending }: QuickAppointmentModalProps) {
-  useEffect(() => {
-    return () => { (document.activeElement as HTMLElement)?.blur(); document.body.focus(); };
-  }, []);
 
   const defaultDate = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const [mode, setMode] = useState<"existing" | "new">("existing");

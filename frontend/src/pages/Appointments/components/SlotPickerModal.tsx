@@ -43,9 +43,6 @@ function generateSlots(schedule: DaySchedule): string[] {
 export function SlotPickerModal({ date, daySchedule, patients, appointments, allAppointments, scheduleConfig, preselectedPatientId, onClose, onDateChange, onSubmit, onSubmitNew, isPending }: Props) {
   const [weekOffset, setWeekOffset] = useState(0);
 
-  useEffect(() => {
-    return () => { (document.activeElement as HTMLElement)?.blur(); document.body.focus(); };
-  }, []);
 
   // Generar 7 días a partir del lunes de la semana actual + offset
   const today = new Date(); today.setHours(0,0,0,0);
