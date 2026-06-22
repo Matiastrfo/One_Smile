@@ -55,7 +55,10 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 @app.on_event("startup")
 def on_startup():
     init_db()
-    start_scheduler()
+    try:
+        start_scheduler()
+    except Exception as e:
+        logging.warning(f"Scheduler no pudo iniciar (no afecta el funcionamiento): {e}")
 
 @app.on_event("shutdown")
 def on_shutdown():

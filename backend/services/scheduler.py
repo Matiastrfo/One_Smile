@@ -42,9 +42,12 @@ def check_and_send_reminders():
             logger.error(f"Fallo recordatorio a {patient_email}: {msg}")
 
 def start_scheduler():
-    scheduler.add_job(check_and_send_reminders, "interval", hours=1, id="reminder_job")
-    scheduler.start()
-    logger.info("Scheduler de recordatorios iniciado.")
+    try:
+        scheduler.add_job(check_and_send_reminders, "interval", hours=1, id="reminder_job")
+        scheduler.start()
+        logger.info("Scheduler de recordatorios iniciado.")
+    except Exception as e:
+        logger.warning(f"Scheduler falló al iniciar: {e}")
 
 def stop_scheduler():
     scheduler.shutdown()
