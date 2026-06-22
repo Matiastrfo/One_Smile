@@ -134,6 +134,16 @@ export interface PatientImage {
   professional_name?: string;
 }
 
+export interface AccountEntryItem {
+  id?: number;
+  patient_id: number;
+  date: string;
+  detail: string;
+  debe: number;
+  haber: number;
+  professional_name?: string;
+}
+
 export interface PatientPayment {
   id?: number;
   patient_id: number;

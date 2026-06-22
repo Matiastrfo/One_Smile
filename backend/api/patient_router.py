@@ -8,6 +8,8 @@ from domain.patient_image import PatientImage
 from persistence.patient_image_repository import PatientImageRepository
 from domain.budget import Budget, BudgetItem
 from persistence.budget_repository import BudgetRepository
+from domain.account_entry import AccountEntry
+from persistence.account_entry_repository import AccountEntryRepository
 from domain.patient import Patient
 from domain.user import User
 from services.patient_service import PatientService
@@ -92,6 +94,28 @@ def upload_patient_photo(patient_id: int, file: UploadFile = File(...), current_
 payment_repo = PatientPaymentRepository()
 
 @router.get("/account-summary")
+def get_account_summary_new(current_user: User = Depends(get_current_user)):
+    return AccountEntryRepository().get_summary_all_patients(professional_id=current_user.id)
+
+@router.get("/{patient_id}/account-entries", response_model=List[AccountEntry])
+def get_account_entries(patient_id: int, current_user: User = Depends(get_current_user)):
+    return AccountEntryRepository().get_by_patient(patient_id)
+
+@router.post("/{patient_id}/account-entries", response_model=AccountEntry)
+def add_account_entry(patient_id: int, entry: AccountEntry, current_user: User = Depends(get_current_user)):
+    from datetime import date as _date
+    entry.patient_id = patient_id
+    entry.professional_id = current_user.id
+    if not entry.date:
+        entry.date = str(_date.today())
+    return AccountEntryRepository().insert(entry)
+
+@router.delete("/{patient_id}/account-entries/{entry_id}")
+def delete_account_entry(patient_id: int, entry_id: int, current_user: User = Depends(get_current_user)):
+    AccountEntryRepository().delete(entry_id)
+    return {"message": "Entrada eliminada"}
+
+@router.get("/account-summary-old")
 def get_account_summary(current_user: User = Depends(get_current_user)):
     repo = PatientPaymentRepository()
     return repo.get_summary_all_patients(professional_id=current_user.id)

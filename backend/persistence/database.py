@@ -310,6 +310,21 @@ def init_db():
         )
     """)
 
+    # Tabla: cuenta corriente unificada (trabajos + pagos)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS account_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            professional_id INTEGER,
+            date TEXT NOT NULL,
+            detail TEXT NOT NULL,
+            debe REAL NOT NULL DEFAULT 0,
+            haber REAL NOT NULL DEFAULT 0,
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    """)
+
     # Tabla: pagos de pacientes (cuenta corriente)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patient_payments (

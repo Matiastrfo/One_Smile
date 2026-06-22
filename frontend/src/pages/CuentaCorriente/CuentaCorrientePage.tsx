@@ -3,7 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Wallet, Search, User } from "lucide-react";
 import { getAccountSummary } from "../../api/patientApi";
-import type { AccountSummaryRow } from "../../types";
+
+interface AccountSummaryRow {
+  patient_id: number;
+  patient_name: string;
+  last_name?: string;
+  dni?: string;
+  total_debe: number;
+  total_haber: number;
+  balance: number;
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
@@ -22,9 +31,9 @@ export function CuentaCorrientePage() {
     return full.includes(search.toLowerCase());
   });
 
-  const totalCharges = summary.reduce((a, r) => a + r.total_charges, 0);
-  const totalPayments = summary.reduce((a, r) => a + r.total_payments, 0);
-  const totalBalance = totalCharges - totalPayments;
+  const totalDebe = summary.reduce((a, r) => a + r.total_debe, 0);
+  const totalHaber = summary.reduce((a, r) => a + r.total_haber, 0);
+  const totalBalance = totalDebe - totalHaber;
 
   if (isLoading) return <div className="p-8 text-center animate-pulse text-muted-foreground">Cargando cuentas corrientes...</div>;
 
@@ -44,11 +53,11 @@ export function CuentaCorrientePage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total facturado</p>
-          <p className="text-2xl font-bold text-foreground">{fmt(totalCharges)}</p>
+          <p className="text-2xl font-bold text-foreground">{fmt(totalDebe)}</p>
         </div>
         <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total cobrado</p>
-          <p className="text-2xl font-bold text-green-600">{fmt(totalPayments)}</p>
+          <p className="text-2xl font-bold text-green-600">{fmt(totalHaber)}</p>
         </div>
         <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saldo pendiente</p>
@@ -96,8 +105,8 @@ export function CuentaCorrientePage() {
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-medium">{fmt(row.total_charges)}</td>
-                <td className="px-4 py-3 text-right font-medium text-green-600">{fmt(row.total_payments)}</td>
+                <td className="px-4 py-3 text-right font-medium">{fmt(row.total_debe)}</td>
+                <td className="px-4 py-3 text-right font-medium text-green-600">{fmt(row.total_haber)}</td>
                 <td className="px-4 py-3 text-right">
                   <span className={`inline-flex items-center gap-1 font-bold ${row.balance > 0 ? "text-rose-600" : row.balance < 0 ? "text-green-600" : "text-muted-foreground"}`}>
                     {row.balance > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : row.balance < 0 ? <TrendingDown className="h-3.5 w-3.5" /> : null}

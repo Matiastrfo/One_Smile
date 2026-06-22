@@ -83,6 +83,9 @@ export const getAccountSummary = async () => {
   return data;
 };
 
+// alias nuevo endpoint
+export const getAccountSummaryNew = getAccountSummary;
+
 export const addPatientPayment = async (patientId: number, payment: { date: string; amount: number; description: string }) => {
   const { data } = await api.post(`/patients/${patientId}/payments`, { ...payment, patient_id: patientId });
   return data;
@@ -90,6 +93,20 @@ export const addPatientPayment = async (patientId: number, payment: { date: stri
 
 export const deletePatientPayment = async (patientId: number, paymentId: number) => {
   await api.delete(`/patients/${patientId}/payments/${paymentId}`);
+};
+
+export const getAccountEntries = async (patientId: number) => {
+  const { data } = await api.get(`/patients/${patientId}/account-entries`);
+  return data;
+};
+
+export const addAccountEntry = async (patientId: number, entry: { date: string; detail: string; debe: number; haber: number }) => {
+  const { data } = await api.post(`/patients/${patientId}/account-entries`, { ...entry, patient_id: patientId });
+  return data;
+};
+
+export const deleteAccountEntry = async (patientId: number, entryId: number) => {
+  await api.delete(`/patients/${patientId}/account-entries/${entryId}`);
 };
 
 export const getPatientBudgets = async (patientId: number) => {

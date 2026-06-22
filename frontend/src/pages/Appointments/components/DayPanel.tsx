@@ -101,7 +101,6 @@ export function DayPanel({ date, appointments, getPatientName, getPatientEmail, 
             const time = appt.date_time.split(" ")[1]?.slice(0, 5) ?? "";
             const status = (appt.status ?? "PENDING") as keyof typeof STATUS_CONFIG;
             const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
-            const Icon = cfg.icon;
 
             return (
               <div

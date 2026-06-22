@@ -7,8 +7,8 @@ function whatsappUrl(phone: string) {
   return `https://wa.me/${phone.replace(/\D/g, "")}`;
 }
 import { useNavigate, useLocation } from "react-router-dom";
-import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail } from "../../api/patientApi";
-import type { PatientAccount, PatientImage, Budget, BudgetItem } from "../../types";
+import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry } from "../../api/patientApi";
+import type { PatientImage, Budget, BudgetItem, AccountEntryItem } from "../../types";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
 import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64 } from "../../utils/odontogramPdf";
 import { getFaceLabels } from "../../utils/toothFaces";
@@ -32,8 +32,8 @@ export function PatientProfilePage() {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [imgUploadForm, setImgUploadForm] = useState({ treatment_type: "GENERAL", description: "" });
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const [paymentForm, setPaymentForm] = useState({ date: new Date().toISOString().split("T")[0], amount: "", description: "Pago" });
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [ccModal, setCcModal] = useState<{ type: "trabajo" | "pago" } | null>(null);
+  const [ccForm, setCcForm] = useState({ date: new Date().toISOString().split("T")[0], detail: "", amount: "" });
   const [odontogramPartialStart, setOdontogramPartialStart] = useState<number | null>(null);
   const [medicalHistory, setMedicalHistory] = useState({ blood_type: "", allergies: "", diseases: "", medications: "", observations: "" });
   const [filiatorio, setFiliatorio] = useState({
@@ -283,6 +283,36 @@ export function PatientProfilePage() {
   });
 
 
+  const { data: accountEntries = [] } = useQuery<AccountEntryItem[]>({
+    queryKey: ["accountEntries", patientId],
+    queryFn: () => getAccountEntries(patientId),
+    enabled: activeTab === "cuenta-corriente",
+  });
+
+  const addEntryMutation = useMutation({
+    mutationFn: () => addAccountEntry(patientId, {
+      date: ccForm.date,
+      detail: ccForm.detail,
+      debe: ccModal?.type === "trabajo" ? parseFloat(ccForm.amount) || 0 : 0,
+      haber: ccModal?.type === "pago" ? parseFloat(ccForm.amount) || 0 : 0,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accountEntries", patientId] });
+      queryClient.invalidateQueries({ queryKey: ["accountSummary"] });
+      setCcModal(null);
+      setCcForm({ date: new Date().toISOString().split("T")[0], detail: "", amount: "" });
+    },
+    onError: () => alert("Error al guardar el movimiento"),
+  });
+
+  const deleteEntryMutation = useMutation({
+    mutationFn: (id: number) => deleteAccountEntry(patientId, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accountEntries", patientId] });
+      queryClient.invalidateQueries({ queryKey: ["accountSummary"] });
+    },
+  });
+
   const { data: budgets = [] } = useQuery<Budget[]>({
     queryKey: ["patientBudgets", patientId],
     queryFn: () => getPatientBudgets(patientId),
@@ -327,30 +357,6 @@ export function PatientProfilePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientImages", patientId] }),
   });
 
-  const { data: account } = useQuery<PatientAccount>({
-    queryKey: ["patientAccount", patientId],
-    queryFn: () => getPatientAccount(patientId),
-    enabled: activeTab === "cuenta-corriente",
-  });
-
-  const addPaymentMutation = useMutation({
-    mutationFn: () => addPatientPayment(patientId, { date: paymentForm.date, amount: parseFloat(paymentForm.amount), description: paymentForm.description }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["patientAccount", patientId] });
-      queryClient.invalidateQueries({ queryKey: ["accountSummary"] });
-      setPaymentForm({ date: new Date().toISOString().split("T")[0], amount: "", description: "Pago" });
-      setShowPaymentForm(false);
-    },
-    onError: () => alert("Error al registrar el pago"),
-  });
-
-  const deletePaymentMutation = useMutation({
-    mutationFn: (paymentId: number) => deletePatientPayment(patientId, paymentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["patientAccount", patientId] });
-      queryClient.invalidateQueries({ queryKey: ["accountSummary"] });
-    },
-  });
 
   if (isLoading) return <div className="p-8 text-center animate-pulse">Cargando Historia Clínica...</div>;
   if (!report) return <div className="p-8 text-center text-red-500">Paciente no encontrado.</div>;
@@ -880,125 +886,91 @@ export function PatientProfilePage() {
 
         {/* TAB: Cuenta Corriente */}
         {activeTab === "cuenta-corriente" && (() => {
-          const entries = account?.entries ?? [];
-          let running = 0;
-          const rows = entries.map(e => {
-            if (e.source === "treatment") running += e.amount;
-            else running -= e.amount;
-            return { ...e, running };
-          });
           const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
-          return (
-            <div className="space-y-5">
-              {/* Resumen */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-card border border-border/60 rounded-2xl p-4 space-y-0.5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Facturado</p>
-                  <p className="text-xl font-bold">{fmt(account?.total_charges ?? 0)}</p>
-                </div>
-                <div className="bg-card border border-border/60 rounded-2xl p-4 space-y-0.5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cobrado</p>
-                  <p className="text-xl font-bold text-green-600">{fmt(account?.total_payments ?? 0)}</p>
-                </div>
-                <div className={`rounded-2xl p-4 space-y-0.5 border ${(account?.balance ?? 0) > 0 ? "bg-rose-50 border-rose-200" : "bg-green-50 border-green-200"}`}>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saldo</p>
-                  <p className={`text-xl font-bold ${(account?.balance ?? 0) > 0 ? "text-rose-600" : "text-green-600"}`}>{fmt(account?.balance ?? 0)}</p>
-                </div>
-              </div>
+          let saldo = 0;
+          const rows = accountEntries.map(e => {
+            saldo += e.debe - e.haber;
+            return { ...e, saldo };
+          });
+          const totalDebe = accountEntries.reduce((s, e) => s + e.debe, 0);
+          const totalHaber = accountEntries.reduce((s, e) => s + e.haber, 0);
+          const saldoFinal = totalDebe - totalHaber;
 
-              {/* Botón registrar pago */}
-              <div className="flex justify-end">
+          return (
+            <div className="space-y-4 max-w-4xl">
+              {/* Botones principales */}
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowPaymentForm(v => !v)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg transition-all"
+                  onClick={() => { setCcModal({ type: "trabajo" }); setCcForm({ date: new Date().toISOString().split("T")[0], detail: "", amount: "" }); }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:bg-primary/90 transition-all"
                 >
-                  <Plus className="h-4 w-4" /> Registrar pago
+                  <Plus className="h-4 w-4" /> Trabajo
+                </button>
+                <button
+                  onClick={() => { setCcModal({ type: "pago" }); setCcForm({ date: new Date().toISOString().split("T")[0], detail: "Pago", amount: "" }); }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/30 hover:bg-emerald-700 transition-all"
+                >
+                  <Plus className="h-4 w-4" /> Pago
                 </button>
               </div>
 
-              {/* Formulario de pago */}
-              {showPaymentForm && (
-                <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-4">
-                  <h4 className="font-semibold text-sm">Nuevo pago</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground">Fecha</label>
-                      <input type="date" value={paymentForm.date} onChange={e => setPaymentForm(p => ({ ...p, date: e.target.value }))}
-                        className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground">Monto ($)</label>
-                      <input type="number" min="0" value={paymentForm.amount} onChange={e => setPaymentForm(p => ({ ...p, amount: e.target.value }))}
-                        placeholder="0" className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground">Descripción</label>
-                      <input type="text" value={paymentForm.description} onChange={e => setPaymentForm(p => ({ ...p, description: e.target.value }))}
-                        className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => setShowPaymentForm(false)} className="px-4 py-2 border rounded-xl text-sm hover:bg-muted/50 transition-colors">Cancelar</button>
-                    <button
-                      onClick={() => addPaymentMutation.mutate()}
-                      disabled={!paymentForm.amount || addPaymentMutation.isPending}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold disabled:opacity-50"
-                    >
-                      {addPaymentMutation.isPending ? "Guardando..." : "Guardar pago"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Tabla libro mayor */}
-              {rows.length === 0 ? (
-                <p className="text-center text-muted-foreground p-8 bg-muted/20 rounded-2xl border border-dashed border-border/60">Sin movimientos registrados.</p>
-              ) : (
-                <div className="rounded-2xl border border-border/60 overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">Fecha</th>
-                        <th className="px-4 py-3 font-semibold">Detalle</th>
-                        <th className="px-4 py-3 font-semibold text-right">Debe</th>
-                        <th className="px-4 py-3 font-semibold text-right">Haber</th>
-                        <th className="px-4 py-3 font-semibold text-right">Saldo</th>
-                        <th className="px-4 py-3"></th>
+              {/* Tabla */}
+              <div className="rounded-2xl border border-border/60 overflow-hidden shadow-sm bg-card">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/60 border-b border-border/60">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider text-muted-foreground w-28">Fecha</th>
+                      <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider text-muted-foreground">Detalle</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground w-32">Debe</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground w-32">Haber</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground w-32">Saldo</th>
+                      <th className="px-4 py-3 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {rows.length === 0 ? (
+                      <tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground text-sm">Sin movimientos registrados.</td></tr>
+                    ) : rows.map((row, i) => (
+                      <tr key={row.id ?? i} className={`hover:bg-muted/30 transition-colors ${row.haber > 0 ? "bg-emerald-50/30" : ""}`}>
+                        <td className="px-4 py-3 text-muted-foreground tabular-nums whitespace-nowrap">{row.date}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium">{row.detail}</p>
+                          {row.professional_name && <p className="text-xs text-muted-foreground">{row.professional_name}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-medium">
+                          {row.debe > 0 ? fmt(row.debe) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-medium text-emerald-600">
+                          {row.haber > 0 ? fmt(row.haber) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className={`px-4 py-3 text-right tabular-nums font-bold ${row.saldo > 0 ? "text-rose-600" : row.saldo < 0 ? "text-emerald-600" : "text-muted-foreground"}`}>
+                          {fmt(Math.abs(row.saldo))}{row.saldo < 0 ? " ↑" : ""}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button onClick={() => { if (confirm("¿Eliminar este movimiento?")) deleteEntryMutation.mutate(row.id!); }}
+                            className="p-1 rounded text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {rows.map((row, i) => (
-                        <tr key={i} className={`hover:bg-muted/40 transition-colors ${row.source === "payment" ? "bg-green-50/40" : ""}`}>
-                          <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.date}</td>
-                          <td className="px-4 py-3">
-                            <p className="font-medium">{row.description}</p>
-                            {row.professional_name && <p className="text-xs text-muted-foreground">{row.professional_name}</p>}
-                          </td>
-                          <td className="px-4 py-3 text-right font-medium">
-                            {row.source === "treatment" ? fmt(row.amount) : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-medium text-green-600">
-                            {row.source === "payment" ? fmt(row.amount) : "—"}
-                          </td>
-                          <td className={`px-4 py-3 text-right font-bold ${row.running > 0 ? "text-rose-600" : "text-green-600"}`}>
-                            {fmt(row.running)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {row.source === "payment" && (
-                              <button
-                                onClick={() => { if (confirm("¿Eliminar este pago?")) deletePaymentMutation.mutate(row.id); }}
-                                className="p-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    ))}
+                  </tbody>
+                  {/* Totales */}
+                  {rows.length > 0 && (
+                    <tfoot className="border-t-2 border-border/60 bg-muted/40">
+                      <tr>
+                        <td className="px-4 py-3 font-bold text-sm" colSpan={2}>TOTALES</td>
+                        <td className="px-4 py-3 text-right font-bold tabular-nums">{fmt(totalDebe)}</td>
+                        <td className="px-4 py-3 text-right font-bold tabular-nums text-emerald-600">{fmt(totalHaber)}</td>
+                        <td className={`px-4 py-3 text-right font-black tabular-nums text-base ${saldoFinal > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                          {fmt(Math.abs(saldoFinal))}
+                        </td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
             </div>
           );
         })()}
@@ -1240,6 +1212,54 @@ export function PatientProfilePage() {
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg transition-all disabled:opacity-50">
                 <Camera className="h-4 w-4" />
                 {photoMutation.isPending ? "Guardando..." : "Capturar foto"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Trabajo / Pago */}
+      {ccModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className={`flex items-center justify-between p-5 border-b ${ccModal.type === "trabajo" ? "bg-primary/5" : "bg-emerald-50"}`}>
+              <h3 className={`font-bold text-base ${ccModal.type === "trabajo" ? "text-primary" : "text-emerald-700"}`}>
+                {ccModal.type === "trabajo" ? "Ingresando Trabajo" : "Ingresando Pago"}
+              </h3>
+              <button onClick={() => setCcModal(null)} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Fecha</label>
+                <input type="date" value={ccForm.date} onChange={e => setCcForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Detalle</label>
+                <input autoFocus type="text" value={ccForm.detail} onChange={e => setCcForm(f => ({ ...f, detail: e.target.value }))}
+                  placeholder={ccModal.type === "trabajo" ? "Ej: Implante pieza 14" : "Ej: Pago en efectivo"}
+                  className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  {ccModal.type === "trabajo" ? "Debe ($)" : "Haber ($)"}
+                </label>
+                <input type="number" min="0" value={ccForm.amount || ""}
+                  onChange={e => setCcForm(f => ({ ...f, amount: e.target.value }))}
+                  placeholder="0"
+                  className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+            </div>
+            <div className="flex gap-3 p-5 pt-0">
+              <button onClick={() => setCcModal(null)}
+                className="flex-1 px-4 py-2.5 border rounded-xl text-sm font-medium hover:bg-muted/50">Cancelar</button>
+              <button
+                onClick={() => addEntryMutation.mutate()}
+                disabled={!ccForm.detail.trim() || !ccForm.amount || addEntryMutation.isPending}
+                className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 ${ccModal.type === "trabajo" ? "bg-primary hover:bg-primary/90" : "bg-emerald-600 hover:bg-emerald-700"}`}>
+                {addEntryMutation.isPending ? "Guardando..." : "OK"}
               </button>
             </div>
           </div>
