@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { DentalPiece, ToothFace, TreatmentType } from '../../types';
+import { getFaceLabel } from '../../utils/toothFaces';
 
 const COLOR_HEX: Record<string, string> = {
   BLUE: '#3b82f6',
@@ -68,6 +70,8 @@ function renderOverlaySvg(type: TreatmentType, color: string | null, faces: stri
 export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = false, puenteRole, overlays = [] }: ToothProps) {
   const { tooth_number, treatment_type, color, faces } = piece;
   const overlayColor = color ? COLOR_HEX[color] : '#000';
+  const [hoveredFace, setHoveredFace] = useState<ToothFace | null>(null);
+
   const getFaceColor = (face: ToothFace): string => {
     if (faces.includes(face) && color) return COLOR_HEX[color];
     return '#ffffff';
@@ -82,6 +86,12 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
         className="relative w-16 h-16 cursor-pointer"
         onContextMenu={e => { e.preventDefault(); onErase(tooth_number); }}
       >
+        {/* Tooltip de cara */}
+        {hoveredFace && (
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-50 bg-gray-800 text-white text-[10px] font-semibold px-2 py-0.5 rounded whitespace-nowrap pointer-events-none">
+            {getFaceLabel(hoveredFace, tooth_number)}
+          </div>
+        )}
         <svg
           viewBox="0 0 100 100"
           className="w-full h-full"
@@ -95,6 +105,8 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
               fill={getFaceColor(face)}
               className="cursor-pointer transition-opacity hover:opacity-75"
               onClick={() => onFaceClick(tooth_number, face)}
+              onMouseEnter={() => setHoveredFace(face)}
+              onMouseLeave={() => setHoveredFace(null)}
               onContextMenu={e => { e.preventDefault(); onErase(tooth_number); }}
             />
           ))}

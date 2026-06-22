@@ -11,6 +11,7 @@ import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOd
 import type { PatientAccount, PatientImage, Budget, BudgetItem } from "../../types";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
 import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType } from "../../utils/odontogramPdf";
+import { getFaceLabels } from "../../utils/toothFaces";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram from "../../components/Odontogram/Odontogram";
 
@@ -71,7 +72,8 @@ export function PatientProfilePage() {
   const autoAddTreatment = (toothNumber: number, treatmentType: TreatmentType, update?: { color: string | null; faces: string[] }) => {
     const label = TREATMENT_LABELS[treatmentType];
     if (!label) return;
-    const description = `${label} - Pieza ${toothNumber}`;
+    const faceStr = update?.faces?.length ? ` (${getFaceLabels(update.faces, toothNumber)})` : '';
+    const description = `${label} - Pieza ${toothNumber}${faceStr}`;
     const today = new Date().toISOString().split("T")[0];
     addTreatment(patientId, {
       description, price: 0, date_time: today, tooth_number: toothNumber,
