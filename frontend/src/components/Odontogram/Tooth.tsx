@@ -53,8 +53,7 @@ function renderOverlaySvg(type: TreatmentType, color: string | null, faces: stri
     case 'ENDODONCIA':
       return null; // se renderizan como label debajo del diente
     case 'PUENTE':
-      if (puenteRole === 'abutment') return <rect x="3" y="3" width="94" height="94" fill="none" stroke={c} strokeWidth="9" />;
-      return <><rect x="3" y="3" width="94" height="94" fill="none" stroke={c} strokeWidth="9" /><line x1="12" y1="12" x2="88" y2="88" stroke={c} strokeWidth="10" strokeLinecap="round" /><line x1="88" y1="12" x2="12" y2="88" stroke={c} strokeWidth="10" strokeLinecap="round" /></>;
+      return <rect x="3" y="3" width="94" height="94" fill="none" stroke={c} strokeWidth="9" />;
     case 'CARIES':
     case 'FILLING':
       return <>
@@ -158,15 +157,9 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
               className="cursor-pointer" onClick={() => onFaceClick(tooth_number, 'center')} />
           )}
           {treatment_type === 'PUENTE' && puenteRole === 'pontic' && (
-            <>
-              <rect x="3" y="3" width="94" height="94" fill="none"
-                stroke={overlayColor} strokeWidth="9"
-                className="cursor-pointer" onClick={() => onFaceClick(tooth_number, 'center')} />
-              <line x1="12" y1="12" x2="88" y2="88" stroke={overlayColor} strokeWidth="10" strokeLinecap="round"
-                className="cursor-pointer" onClick={() => onFaceClick(tooth_number, 'center')} />
-              <line x1="88" y1="12" x2="12" y2="88" stroke={overlayColor} strokeWidth="10" strokeLinecap="round"
-                className="cursor-pointer" onClick={() => onFaceClick(tooth_number, 'center')} />
-            </>
+            <rect x="3" y="3" width="94" height="94" fill="none"
+              stroke={overlayColor} strokeWidth="9"
+              className="cursor-pointer" onClick={() => onFaceClick(tooth_number, 'center')} />
           )}
 
           {/* PROTESIS_PARCIAL — X en color seleccionado */}
