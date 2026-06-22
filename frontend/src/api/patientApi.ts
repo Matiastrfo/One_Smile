@@ -1,6 +1,25 @@
 import api from "./axios";
 import type { Patient } from "../types";
 
+export const sendDocumentByEmail = async (params: {
+  toEmail: string;
+  patientName: string;
+  subject: string;
+  docType: "presupuesto" | "consentimiento" | "tratamientos";
+  pdfBase64: string;
+  filename: string;
+}) => {
+  const { data } = await api.post("/api/email/send-document", {
+    to_email: params.toEmail,
+    patient_name: params.patientName,
+    subject: params.subject,
+    doc_type: params.docType,
+    pdf_base64: params.pdfBase64,
+    filename: params.filename,
+  });
+  return data;
+};
+
 export const getPatients = async (search?: string): Promise<Patient[]> => {
   const url = search ? `/patients/?search=${encodeURIComponent(search)}` : "/patients/";
   const { data } = await api.get(url);

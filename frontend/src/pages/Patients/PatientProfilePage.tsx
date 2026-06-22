@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle, X } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle, X, Mail } from "lucide-react";
 
 function whatsappUrl(phone: string) {
   return `https://wa.me/${phone.replace(/\D/g, "")}`;
 }
 import { useNavigate, useLocation } from "react-router-dom";
-import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget } from "../../api/patientApi";
+import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientAccount, addPatientPayment, deletePatientPayment, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail } from "../../api/patientApi";
 import type { PatientAccount, PatientImage, Budget, BudgetItem } from "../../types";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
-import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType } from "../../utils/odontogramPdf";
+import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64 } from "../../utils/odontogramPdf";
 import { getFaceLabels } from "../../utils/toothFaces";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram from "../../components/Odontogram/Odontogram";
@@ -24,6 +24,7 @@ export function PatientProfilePage() {
   
   const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram" | "cuenta-corriente" | "imagenes" | "presupuesto" | "consentimiento">((location.state as any)?.openTab ?? "odontogram");
   const [consentTooth, setConsentTooth] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
   const [budgetNotes, setBudgetNotes] = useState("");
   const [showBudgetForm, setShowBudgetForm] = useState(false);
@@ -763,6 +764,23 @@ export function PatientProfilePage() {
               >
                 <FileText className="h-4 w-4" /> Descargar PDF
               </button>
+              {(report.patient as any).email && (
+                <button
+                  disabled={sendingEmail}
+                  onClick={async () => {
+                    setSendingEmail(true);
+                    try {
+                      const b64 = getTreatmentsPdfBase64(report.patient.name, report.treatments);
+                      await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: report.patient.name, subject: `Historial de tratamientos - ${report.patient.name}`, docType: "tratamientos", pdfBase64: b64, filename: `tratamientos_${report.patient.name}.pdf` });
+                      alert("✅ Email enviado correctamente");
+                    } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
+                    finally { setSendingEmail(false); }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border/60 bg-muted/40 hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  <Mail className="h-4 w-4" /> {sendingEmail ? "Enviando..." : "Enviar por email"}
+                </button>
+              )}
               <button onClick={openTreatmentModalForCreate} className="bg-primary text-primary-foreground px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-shadow">
                 <Plus className="h-4 w-4" /> Nuevo Tratamiento
               </button>
@@ -1014,27 +1032,40 @@ export function PatientProfilePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {consents.map(c => (
-                  <button
-                    key={c.type}
-                    onClick={() => downloadConsentPdf(
-                      report.patient.name + ((report.patient as any).last_name ? ` ${(report.patient as any).last_name}` : ""),
-                      report.patient.dni ?? "",
-                      profName,
-                      c.type,
-                      consentTooth || undefined
-                    )}
-                    className={`flex items-center gap-3 p-4 rounded-2xl border text-left transition-colors ${c.color}`}
-                  >
-                    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/70 shrink-0">
-                      <FileText className="h-5 w-5" />
+                {consents.map(c => {
+                  const fullName = report.patient.name + ((report.patient as any).last_name ? ` ${(report.patient as any).last_name}` : "");
+                  return (
+                    <div key={c.type} className={`flex items-center gap-3 p-4 rounded-2xl border ${c.color}`}>
+                      <button
+                        onClick={() => downloadConsentPdf(fullName, report.patient.dni ?? "", profName, c.type, consentTooth || undefined)}
+                        className="flex items-center gap-3 flex-1 text-left"
+                      >
+                        <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/70 shrink-0">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{c.label}</p>
+                          <p className="text-xs opacity-70">{c.desc}</p>
+                        </div>
+                      </button>
+                      {(report.patient as any).email && (
+                        <button disabled={sendingEmail} title="Enviar por email"
+                          onClick={async () => {
+                            setSendingEmail(true);
+                            try {
+                              const b64 = getConsentPdfBase64(fullName, report.patient.dni ?? "", profName, c.type, consentTooth || undefined);
+                              await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: fullName, subject: `Consentimiento informado - ${c.label}`, docType: "consentimiento", pdfBase64: b64, filename: `consentimiento_${c.type}_${fullName}.pdf` });
+                              alert("✅ Email enviado correctamente");
+                            } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
+                            finally { setSendingEmail(false); }
+                          }}
+                          className="p-1.5 rounded-lg bg-white/70 hover:bg-white transition-colors disabled:opacity-50 shrink-0">
+                          <Mail className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-sm">{c.label}</p>
-                      <p className="text-xs opacity-70">{c.desc}</p>
-                    </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
 
               <p className="text-xs text-muted-foreground">Cada PDF incluye: datos del paciente y profesional, descripción del procedimiento, riesgos, cuidados post-operatorios y espacio para firma.</p>
@@ -1131,6 +1162,21 @@ export function PatientProfilePage() {
                         className="p-1.5 hover:bg-accent rounded-lg text-primary" title="Descargar PDF">
                         <FileText className="h-4 w-4" />
                       </button>
+                      {(report.patient as any).email && (
+                        <button disabled={sendingEmail} title="Enviar por email"
+                          onClick={async () => {
+                            setSendingEmail(true);
+                            try {
+                              const b64 = getBudgetPdfBase64(report.patient.name, budget, budget.professional_name ?? "");
+                              await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: report.patient.name, subject: `Presupuesto - ${report.patient.name}`, docType: "presupuesto", pdfBase64: b64, filename: `presupuesto_${report.patient.name}.pdf` });
+                              alert("✅ Email enviado correctamente");
+                            } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
+                            finally { setSendingEmail(false); }
+                          }}
+                          className="p-1.5 hover:bg-accent rounded-lg text-blue-500 disabled:opacity-50">
+                          <Mail className="h-4 w-4" />
+                        </button>
+                      )}
                       <button onClick={() => { if (confirm("¿Eliminar presupuesto?")) deleteBudgetMutation.mutate(budget.id!); }}
                         className="p-1.5 hover:bg-rose-50 hover:text-rose-500 rounded-lg" title="Eliminar">
                         <Trash2 className="h-4 w-4" />
