@@ -88,7 +88,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadURL('app://localhost/index.html');
-    mainWindow.webContents.openDevTools(); // debug temporal
   }
 }
 
