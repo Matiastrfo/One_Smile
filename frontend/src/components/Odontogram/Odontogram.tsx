@@ -49,21 +49,33 @@ const RANGE_TREATMENTS: TreatmentType[] = ['PROTESIS_PARCIAL', 'PUENTE'];
 const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partialStart, onSetPartialStart, onToothUpdate, onArchUpdate, onAddOverlay, onDeleteTreatment }) => {
   const [selectedTool, setSelectedTool] = useState<SelectedTool>(DEFAULT_TOOL);
   const [toothModalNumber, setToothModalNumber] = useState<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const NATURAL_WIDTH = 1080; // ancho natural del odontograma sin escalar
+  const containerRef = useRef<HTMLDivElement>(null); // wrapper flex-1 min-w-0 (mide espacio real disponible)
+  const contentRef = useRef<HTMLDivElement>(null);   // contenido sin escalar (mide su alto natural)
   const [zoom, setZoom] = useState(1);
+  const [contentHeight, setContentHeight] = useState<number | null>(null);
 
+  // Mide el alto natural del contenido (cambia con overlays/puentes) una vez montado y en cada update
   useEffect(() => {
-    const update = () => {
-      if (!containerRef.current) return;
-      const available = containerRef.current.offsetWidth;
-      // El odontograma necesita ~1080px para mostrarse sin scroll
-      const needed = 1080;
-      const ratio = available / needed;
-      setZoom(ratio < 1 ? Math.max(ratio, 0.65) : 1);
-    };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    if (!contentRef.current) return;
+    const ro = new ResizeObserver(() => {
+      if (contentRef.current) setContentHeight(contentRef.current.scrollHeight);
+    });
+    ro.observe(contentRef.current);
+    return () => ro.disconnect();
+  });
+
+  // Mide el espacio realmente disponible (el wrapper SÍ puede achicarse por min-w-0)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    const ro = new ResizeObserver(entries => {
+      const available = entries[0]?.contentRect.width ?? el.offsetWidth;
+      const ratio = available / NATURAL_WIDTH;
+      setZoom(ratio < 1 ? Math.max(ratio, 0.6) : 1);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   const getPiece = (num: number): DentalPiece => (
@@ -406,8 +418,16 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
       {/* Panel izquierdo */}
       <TreatmentPanel selected={selectedTool} onChange={handleToolChange} />
 
-      {/* Odontograma */}
-      <div className="flex-1 flex flex-col items-center gap-10 py-6 px-4 bg-card rounded-2xl border border-border/60 shadow-sm relative" style={{ zoom }}>
+      {/* Odontograma — wrapper observado, se permite achicar (min-w-0) */}
+      <div ref={containerRef} className="flex-1 min-w-0 overflow-hidden flex justify-center">
+        {/* Wrapper con el tamaño REAL post-escala, para que el layout flex lo respete */}
+        <div style={{ width: NATURAL_WIDTH * zoom, height: contentHeight ? contentHeight * zoom : undefined }}>
+          {/* Contenido con su tamaño natural completo, escalado visualmente */}
+          <div
+            ref={contentRef}
+            style={{ width: NATURAL_WIDTH, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+            className="flex flex-col items-center gap-10 py-6 px-4 bg-card rounded-2xl border border-border/60 shadow-sm relative"
+          >
 
         {/* Indicador de selección parcial en curso */}
         {(selectedTool.treatment_type === 'PROTESIS_PARCIAL' || selectedTool.treatment_type === 'PUENTE') && (
@@ -482,6 +502,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
           <div className="flex items-center gap-1.5"><span className="w-3 h-3 block rounded-sm bg-blue-500" /> A realizar</div>
           <div className="flex items-center gap-1.5"><span className="w-3 h-3 block rounded-sm bg-red-500" /> Realizado</div>
           <div className="flex items-center gap-1.5"><span className="w-3 h-3 block rounded-sm bg-green-500" /> Hecho por profesional</div>
+        </div>
+          </div>
         </div>
       </div>
     </div>
