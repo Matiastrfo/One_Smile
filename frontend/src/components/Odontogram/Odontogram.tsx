@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, X } from 'lucide-react';
 import Tooth from './Tooth';
 import { TreatmentPanel, TREATMENTS } from './TreatmentPanel';
@@ -49,6 +49,22 @@ const RANGE_TREATMENTS: TreatmentType[] = ['PROTESIS_PARCIAL', 'PUENTE'];
 const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partialStart, onSetPartialStart, onToothUpdate, onArchUpdate, onAddOverlay, onDeleteTreatment }) => {
   const [selectedTool, setSelectedTool] = useState<SelectedTool>(DEFAULT_TOOL);
   const [toothModalNumber, setToothModalNumber] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+
+  useEffect(() => {
+    const update = () => {
+      if (!containerRef.current) return;
+      const available = containerRef.current.offsetWidth;
+      // El odontograma necesita ~1080px para mostrarse sin scroll
+      const needed = 1080;
+      const ratio = available / needed;
+      setZoom(ratio < 1 ? Math.max(ratio, 0.65) : 1);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   const getPiece = (num: number): DentalPiece => (
     pieces.find(p => p.tooth_number === num) ?? {
@@ -343,7 +359,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
     (selectedTool.treatment_type === 'PUENTE'           && (upperPuente   || lowerPuente));
 
   return (
-    <div className="flex gap-4 items-stretch w-full">
+    <div className="flex gap-4 items-stretch w-full" ref={containerRef}>
       {/* Modal tratamientos del diente */}
       {toothModalNumber !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setToothModalNumber(null)}>
@@ -391,7 +407,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
       <TreatmentPanel selected={selectedTool} onChange={handleToolChange} />
 
       {/* Odontograma */}
-      <div className="flex-1 flex flex-col items-center gap-10 py-6 px-4 bg-card rounded-2xl border border-border/60 shadow-sm relative">
+      <div className="flex-1 flex flex-col items-center gap-10 py-6 px-4 bg-card rounded-2xl border border-border/60 shadow-sm relative" style={{ zoom }}>
 
         {/* Indicador de selección parcial en curso */}
         {(selectedTool.treatment_type === 'PROTESIS_PARCIAL' || selectedTool.treatment_type === 'PUENTE') && (
