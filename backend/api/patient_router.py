@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from typing import List, Optional
 import os, shutil, uuid
 from domain.patient_payment import PatientPayment
@@ -71,6 +72,13 @@ def update_patient(patient_id: int, patient: Patient, current_user: User = Depen
 def delete_patient(patient_id: int, current_admin: User = Depends(require_admin)):
     patient_service.delete_patient(patient_id)
     return {"message": "Paciente eliminado"}
+
+class DentitionModeUpdate(BaseModel):
+    dentition_mode: str
+
+@router.patch("/{patient_id}/dentition-mode", response_model=Patient)
+def update_dentition_mode(patient_id: int, body: DentitionModeUpdate, current_user: User = Depends(get_current_user)):
+    return patient_service.update_dentition_mode(patient_id, body.dentition_mode)
 
 PATIENT_PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "patients")
 os.makedirs(PATIENT_PHOTOS_DIR, exist_ok=True)

@@ -27,6 +27,8 @@ frontend/.npm/
 # Variables de entorno y secretos
 .env
 backend/.jwt_secret
+backend/.secret_key
+backend/error.log
 uploads/
 .env.local
 .env.development.local

@@ -31,13 +31,13 @@ class UserRepository:
         finally:
             conn.close()
 
-    def create(self, user_in_db: UserInDB) -> User:
+    def create(self, user_in_db: UserInDB, recovery_code_hash: str = None) -> User:
         conn = get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "INSERT INTO users (email, password_hash, role, name) VALUES (?, ?, ?, ?)",
-                (user_in_db.email, user_in_db.password_hash, user_in_db.role, user_in_db.name)
+                "INSERT INTO users (email, password_hash, role, name, recovery_code_hash) VALUES (?, ?, ?, ?, ?)",
+                (user_in_db.email, user_in_db.password_hash, user_in_db.role, user_in_db.name, recovery_code_hash)
             )
             conn.commit()
             new_id = cursor.lastrowid

@@ -1,7 +1,7 @@
 const { app, BrowserWindow, dialog, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const http = require('http');
 let autoUpdater, log;
 try {
@@ -21,9 +21,22 @@ const isDev = !app.isPackaged;
 const BACKEND_PORT = 8000;
 let backendProcess = null;
 let mainWindow = null;
+let isShuttingDown = false;
+let backendRestartCount = 0;
+const MAX_BACKEND_RESTARTS = 3;
+
+// Mata cualquier backend.exe huérfano de una versión anterior
+function killOrphanBackend() {
+  try {
+    execSync('taskkill /F /IM backend.exe', { stdio: 'ignore' });
+  } catch {
+    // No había proceso corriendo — ignorar
+  }
+}
 
 // ── Iniciar el backend ────────────────────────────────────────────────
 function startBackend() {
+  if (!isDev) killOrphanBackend();
   if (isDev) {
     // En desarrollo: levanta uvicorn directamente
     const venvPython = path.join(__dirname, '..', 'venv', 'Scripts', 'python.exe');
@@ -42,6 +55,36 @@ function startBackend() {
   backendProcess.stdout?.on('data', d => console.log('[backend]', d.toString()));
   backendProcess.stderr?.on('data', d => console.error('[backend]', d.toString()));
   backendProcess.on('error', err => console.error('[backend] Error al iniciar:', err));
+  backendProcess.on('exit', (code, signal) => handleBackendExit(code, signal));
+}
+
+// ── Recuperación ante caída del backend ──────────────────────────────
+function handleBackendExit(code, signal) {
+  if (isShuttingDown) return;
+  console.error(`[backend] Proceso terminado inesperadamente (code=${code}, signal=${signal})`);
+
+  if (backendRestartCount >= MAX_BACKEND_RESTARTS) {
+    dialog.showErrorBox(
+      'ONE Smile dejó de funcionar',
+      'El servidor interno se detuvo varias veces y no se pudo recuperar. Cerrá y volvé a abrir el programa. Si el problema persiste, contactá a soporte.'
+    );
+    return;
+  }
+
+  backendRestartCount++;
+  console.log(`[backend] Reintentando iniciar (intento ${backendRestartCount}/${MAX_BACKEND_RESTARTS})...`);
+  startBackend();
+  waitForBackend()
+    .then(() => {
+      backendRestartCount = 0;
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload();
+    })
+    .catch(() => {
+      dialog.showErrorBox(
+        'ONE Smile dejó de funcionar',
+        'El servidor interno no pudo reiniciarse. Cerrá y volvé a abrir el programa. Si el problema persiste, contactá a soporte.'
+      );
+    });
 }
 
 // DB en AppData para que persista entre actualizaciones
@@ -207,6 +250,7 @@ function setupAutoUpdater() {
       message: 'La actualización fue descargada. La aplicación se reiniciará para instalarla.',
       buttons: ['Reiniciar ahora'],
     }).then(() => {
+      isShuttingDown = true;
       if (backendProcess) backendProcess.kill();
       autoUpdater.quitAndInstall(true, true);
     });
@@ -242,10 +286,14 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  isShuttingDown = true;
   if (backendProcess) backendProcess.kill();
+  killOrphanBackend();
   if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('before-quit', () => {
+  isShuttingDown = true;
   if (backendProcess) backendProcess.kill();
+  killOrphanBackend();
 });

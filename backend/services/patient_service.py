@@ -88,3 +88,7 @@ class PatientService:
 
     def delete_patient(self, id: int) -> None:
         self.repository.delete(id)
+
+    def update_dentition_mode(self, id: int, mode: str) -> Patient:
+        self.repository.update_dentition_mode(id, mode)
+        return self.repository.get_by_id(id)

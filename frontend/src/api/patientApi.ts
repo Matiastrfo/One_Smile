@@ -73,6 +73,11 @@ export const updateTooth = async (patientId: number, toothNumber: number, update
   await api.put(`/patients/${patientId}/odontogram/pieces/${toothNumber}`, update);
 };
 
+export const updateDentitionMode = async (patientId: number, dentitionMode: string): Promise<Patient> => {
+  const { data } = await api.patch(`/patients/${patientId}/dentition-mode`, { dentition_mode: dentitionMode });
+  return data;
+};
+
 export const getPatientAccount = async (patientId: number) => {
   const { data } = await api.get(`/patients/${patientId}/account`);
   return data;

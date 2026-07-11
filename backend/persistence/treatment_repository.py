@@ -6,8 +6,8 @@ class TreatmentRepository:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO treatments (patient_id, professional_id, date_time, description, price, tooth_number, odontogram_type, odontogram_color, odontogram_faces, arch_teeth) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (treatment.patient_id, treatment.professional_id, treatment.date_time, treatment.description, treatment.price, treatment.tooth_number, treatment.odontogram_type, treatment.odontogram_color, treatment.odontogram_faces, treatment.arch_teeth)
+            "INSERT INTO treatments (patient_id, professional_id, date_time, description, price, tooth_number, odontogram_type, odontogram_color, odontogram_faces, arch_teeth, dentition, is_overlay) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (treatment.patient_id, treatment.professional_id, treatment.date_time, treatment.description, treatment.price, treatment.tooth_number, treatment.odontogram_type, treatment.odontogram_color, treatment.odontogram_faces, treatment.arch_teeth, treatment.dentition, int(treatment.is_overlay))
         )
         treatment.id = cursor.lastrowid
         conn.commit()
@@ -29,12 +29,12 @@ class TreatmentRepository:
     def get_by_id(self, treatment_id: int):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, patient_id, professional_id, date_time, description, price, tooth_number, odontogram_type, odontogram_color, odontogram_faces, arch_teeth FROM treatments WHERE id = ?", (treatment_id,))
+        cursor.execute("SELECT id, patient_id, professional_id, date_time, description, price, tooth_number, odontogram_type, odontogram_color, odontogram_faces, arch_teeth, dentition, is_overlay FROM treatments WHERE id = ?", (treatment_id,))
         row = cursor.fetchone()
         conn.close()
         if not row:
             return None
-        return Treatment(id=row[0], patient_id=row[1], professional_id=row[2], date_time=row[3], description=row[4], price=row[5], tooth_number=row[6], odontogram_type=row[7], odontogram_color=row[8], odontogram_faces=row[9], arch_teeth=row[10])
+        return Treatment(id=row[0], patient_id=row[1], professional_id=row[2], date_time=row[3], description=row[4], price=row[5], tooth_number=row[6], odontogram_type=row[7], odontogram_color=row[8], odontogram_faces=row[9], arch_teeth=row[10], dentition=row[11], is_overlay=bool(row[12]))
 
     def delete(self, treatment_id: int) -> None:
         conn = get_connection()
@@ -47,7 +47,7 @@ class TreatmentRepository:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT t.id, t.patient_id, t.professional_id, t.date_time, t.description, t.price, t.tooth_number, COALESCE(NULLIF(u.name,''), u.email), t.odontogram_type, t.odontogram_color, t.odontogram_faces, t.arch_teeth
+            SELECT t.id, t.patient_id, t.professional_id, t.date_time, t.description, t.price, t.tooth_number, COALESCE(NULLIF(u.name,''), u.email), t.odontogram_type, t.odontogram_color, t.odontogram_faces, t.arch_teeth, t.dentition, t.is_overlay
             FROM treatments t
             LEFT JOIN users u ON t.professional_id = u.id
             WHERE t.patient_id = ?
@@ -62,6 +62,6 @@ class TreatmentRepository:
                 date_time=row[3], description=row[4], price=row[5],
                 tooth_number=row[6], professional_email=row[7],
                 odontogram_type=row[8], odontogram_color=row[9], odontogram_faces=row[10],
-                arch_teeth=row[11]
+                arch_teeth=row[11], dentition=row[12], is_overlay=bool(row[13])
             ))
         return treatments

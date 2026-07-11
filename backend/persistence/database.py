@@ -275,13 +275,15 @@ def init_db():
         if col[0] not in patient_columns:
             cursor.execute(f"ALTER TABLE patients ADD COLUMN {col[0]} {col[1]}")
 
-    # Migración: agregar columnas name y avatar_path a users si no existen
+    # Migración: agregar columnas a users si no existen
     cursor.execute("PRAGMA table_info(users)")
     user_columns = [row[1] for row in cursor.fetchall()]
     if "name" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN name TEXT NOT NULL DEFAULT ''")
     if "avatar_path" not in user_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN avatar_path TEXT")
+    if "recovery_code_hash" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN recovery_code_hash TEXT")
 
     # Migración: agregar columna odontogram_type a treatments si no existe
     cursor.execute("PRAGMA table_info(treatments)")
@@ -368,18 +370,81 @@ def init_db():
     """)
     cursor.execute("INSERT OR IGNORE INTO email_config (id) VALUES (1)")
 
-    # Seed de admin por defecto
-    # El password '12345' hasheado con bcrypt (usaremos un hash pre-generado de '12345' para simplicidad y consistencia en init_db)
-    # Generado usando passlib.hash.bcrypt.hash("12345")
-    admin_email = "admin@dentalmanager.com"
-    cursor.execute("SELECT id FROM users WHERE email = ?", (admin_email,))
-    if not cursor.fetchone():
-        # Hash for '12345' password
-        admin_hash = "$2b$12$26rIxftRoI.ZoYYJ.7l7veyk1tZq/dWQNXyc0zBVuVCdtPqOct3jC"
-        cursor.execute(
-            "INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)",
-            (admin_email, admin_hash, "admin")
+    # Tabla: laboratorios
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS labs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT,
+            email TEXT,
+            price_list_path TEXT,
+            created_at TEXT NOT NULL DEFAULT ''
         )
+    """)
+
+    # Tabla: trabajos de laboratorio
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS lab_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lab_id INTEGER NOT NULL,
+            patient_id INTEGER NOT NULL,
+            professional_id INTEGER,
+            description TEXT NOT NULL,
+            sent_date TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'SENT',
+            received_date TEXT,
+            notes TEXT,
+            FOREIGN KEY (lab_id) REFERENCES labs(id) ON DELETE CASCADE,
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    """)
+
+    # Tabla: configuración de backups
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS backup_config (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            destination_path TEXT NOT NULL DEFAULT '',
+            enabled INTEGER NOT NULL DEFAULT 0,
+            keep_count INTEGER NOT NULL DEFAULT 30,
+            last_backup_at TEXT
+        )
+    """)
+    cursor.execute("INSERT OR IGNORE INTO backup_config (id) VALUES (1)")
+
+    # Tabla: rate limiting / bloqueo de intentos
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS rate_limit_attempts (
+            key TEXT PRIMARY KEY,
+            failed_count INTEGER NOT NULL DEFAULT 0,
+            locked_until TEXT
+        )
+    """)
+
+    # Migración: columnas is_overlay y dentition en treatments
+    cursor.execute("PRAGMA table_info(treatments)")
+    t_cols = [r[1] for r in cursor.fetchall()]
+    if "is_overlay" not in t_cols:
+        cursor.execute("ALTER TABLE treatments ADD COLUMN is_overlay INTEGER NOT NULL DEFAULT 0")
+    if "dentition" not in t_cols:
+        cursor.execute("ALTER TABLE treatments ADD COLUMN dentition TEXT")
+
+    # Migración: columna dentition_mode en patients
+    cursor.execute("PRAGMA table_info(patients)")
+    p_cols = [r[1] for r in cursor.fetchall()]
+    if "dentition_mode" not in p_cols:
+        cursor.execute("ALTER TABLE patients ADD COLUMN dentition_mode TEXT NOT NULL DEFAULT 'adulto'")
+
+    # Tabla: lista de precios de tratamientos por profesional
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS treatment_prices (
+            professional_id INTEGER NOT NULL,
+            treatment_type TEXT NOT NULL,
+            price REAL NOT NULL DEFAULT 0,
+            PRIMARY KEY (professional_id, treatment_type),
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
 
     conn.commit()
     conn.close()

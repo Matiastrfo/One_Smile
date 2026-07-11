@@ -28,9 +28,15 @@ export function PatientsPage() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const { data: patients = [], isLoading } = useQuery({
+  const { data: patientsData = [], isLoading } = useQuery({
     queryKey: ["patients", debouncedSearch],
     queryFn: () => getPatients(debouncedSearch),
+  });
+
+  const patients = [...patientsData].sort((a, b) => {
+    const nameA = `${a.name ?? ""} ${(a as any).last_name ?? ""}`.trim().toLocaleLowerCase("es-AR");
+    const nameB = `${b.name ?? ""} ${(b as any).last_name ?? ""}`.trim().toLocaleLowerCase("es-AR");
+    return nameA.localeCompare(nameB, "es-AR");
   });
 
 

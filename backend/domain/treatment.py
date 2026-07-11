@@ -14,3 +14,5 @@ class Treatment(BaseModel):
     odontogram_color: Optional[str] = None
     odontogram_faces: Optional[str] = None
     arch_teeth: Optional[str] = None
+    dentition: Optional[str] = None
+    is_overlay: bool = False

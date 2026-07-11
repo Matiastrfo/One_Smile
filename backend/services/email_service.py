@@ -76,3 +76,28 @@ def send_appointment_reminder(patient_name: str, patient_email: str, date_time: 
     </div>
     """
     return send_email(patient_email, subject, html)
+
+def send_lab_job_notification(lab_email: str, lab_name: str, patient_name: str, description: str, sent_date: str, professional_name: str) -> tuple[bool, str]:
+    subject = f"Nuevo trabajo enviado — {patient_name}"
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden">
+      <div style="background:#0a285a;padding:24px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:22px">ONE Smile</h1>
+        <p style="color:#a0c3f0;margin:4px 0 0;font-size:12px">ODONTOLOGÍA TRIFIRO</p>
+      </div>
+      <div style="padding:28px 32px">
+        <h2 style="color:#0a285a;font-size:18px;margin:0 0 8px">Nuevo trabajo enviado</h2>
+        <p style="color:#444;font-size:14px;margin:0 0 20px">Hola <strong>{lab_name}</strong>, te enviamos un nuevo trabajo:</p>
+        <div style="background:#f0f5ff;border-radius:10px;padding:16px 20px;margin-bottom:20px">
+          <p style="margin:4px 0;font-size:14px;color:#0a285a"><strong>Paciente:</strong> {patient_name}</p>
+          <p style="margin:4px 0;font-size:14px;color:#0a285a"><strong>Trabajo:</strong> {description}</p>
+          <p style="margin:4px 0;font-size:14px;color:#0a285a"><strong>Fecha de envío:</strong> {sent_date}</p>
+          <p style="margin:4px 0;font-size:14px;color:#0a285a"><strong>Profesional:</strong> {professional_name}</p>
+        </div>
+      </div>
+      <div style="background:#0a285a;padding:14px;text-align:center">
+        <p style="color:#a0c3f0;font-size:11px;margin:0">ONE Smile · Odontología Trifiro</p>
+      </div>
+    </div>
+    """
+    return send_email(lab_email, subject, html)

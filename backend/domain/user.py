@@ -10,7 +10,7 @@ class User(BaseModel):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password: Optional[str] = None
     role: str = "profesional"
     name: str = ""
 

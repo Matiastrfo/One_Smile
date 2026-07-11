@@ -1,19 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle, X, Mail } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle, X, Mail, FlaskConical, DollarSign } from "lucide-react";
 
 function whatsappUrl(phone: string) {
   return `https://wa.me/${phone.replace(/\D/g, "")}`;
 }
 import { useNavigate, useLocation } from "react-router-dom";
-import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry } from "../../api/patientApi";
+import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updateDentitionMode, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry } from "../../api/patientApi";
 import type { PatientImage, Budget, BudgetItem, AccountEntryItem } from "../../types";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
-import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64 } from "../../utils/odontogramPdf";
+import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64, downloadAdmisionPdf, getAdmisionPdfBase64 } from "../../utils/odontogramPdf";
 import { getFaceLabels } from "../../utils/toothFaces";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
-import Odontogram from "../../components/Odontogram/Odontogram";
+import Odontogram, { type DentitionMode, toChildNumber } from "../../components/Odontogram/Odontogram";
+import { PriceListModal } from "../../components/Odontogram/PriceListModal";
 
 export function PatientProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,7 @@ export function PatientProfilePage() {
   
   const [activeTab, setActiveTab] = useState<"filiatorio" | "history" | "treatments" | "odontogram" | "cuenta-corriente" | "imagenes" | "presupuesto" | "consentimiento">((location.state as any)?.openTab ?? "odontogram");
   const [consentTooth, setConsentTooth] = useState("");
+  const [consentProcedureDetail, setConsentProcedureDetail] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
   const [budgetNotes, setBudgetNotes] = useState("");
@@ -35,8 +37,11 @@ export function PatientProfilePage() {
   const [ccModal, setCcModal] = useState<{ type: "trabajo" | "pago" } | null>(null);
   const [ccForm, setCcForm] = useState({ date: new Date().toISOString().split("T")[0], detail: "", amount: "" });
   const [odontogramPartialStart, setOdontogramPartialStart] = useState<number | null>(null);
+  const [dentitionMode, setDentitionMode] = useState<DentitionMode>('adulto');
+  const [showPriceList, setShowPriceList] = useState(false);
   const [medicalHistory, setMedicalHistory] = useState({ blood_type: "", allergies: "", diseases: "", medications: "", observations: "" });
   const [filiatorio, setFiliatorio] = useState({
+    name: "", dni: "", phone: "",
     last_name: "", social_security: "", social_security_number: "",
     address: "", province: "", city: "", email: "", birth_date: "",
   });
@@ -70,23 +75,26 @@ export function PatientProfilePage() {
     PUENTE: "Puente",
   };
 
-  const autoAddTreatment = (toothNumber: number, treatmentType: TreatmentType, update?: { color: string | null; faces: string[] }) => {
+  const autoAddTreatment = (toothNumber: number, treatmentType: TreatmentType, update?: { color: string | null; faces: string[] }, dentition?: DentitionMode, isOverlay = false) => {
     const label = TREATMENT_LABELS[treatmentType];
     if (!label) return;
+    const displayToothNumber = dentition === 'nino' ? (toChildNumber(toothNumber) ?? toothNumber) : toothNumber;
     const faceStr = update?.faces?.length ? ` (${getFaceLabels(update.faces, toothNumber)})` : '';
-    const description = `${label} - Pieza ${toothNumber}${faceStr}`;
+    const description = `${label} - Pieza ${displayToothNumber}${faceStr}`;
     const today = new Date().toISOString().split("T")[0];
     addTreatment(patientId, {
       description, price: 0, date_time: today, tooth_number: toothNumber,
       odontogram_type: treatmentType,
       odontogram_color: update?.color ?? null,
       odontogram_faces: update?.faces ? JSON.stringify(update.faces) : '[]',
+      dentition: dentition ?? null,
+      is_overlay: isOverlay,
     })
       .then(() => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }))
       .catch(() => {});
   };
 
-  const autoDeleteTreatmentForTooth = (toothNumber: number, archOnly = false, directOnly = false) => {
+  const autoDeleteTreatmentForTooth = (toothNumber: number, archOnly = false, directOnly = false, sameTypeOnly?: TreatmentType) => {
     const treatments = report?.treatments ?? [];
     const matches = treatments.filter(t => {
       const archTeeth = (t as any).arch_teeth;
@@ -100,7 +108,12 @@ export function PatientProfilePage() {
       }
       if (directOnly) {
         // Solo borrar el registro directo del diente (no arch records, no overlays de otros)
-        return (t as any).tooth_number === toothNumber && !archTeeth;
+        if ((t as any).tooth_number !== toothNumber || archTeeth) return false;
+        // Si se pide sameTypeOnly, sólo reemplazar el registro que sea del mismo tipo de tratamiento
+        // (ej: se agregaron más caras a la misma caries). Si el diente pasa a OTRO tipo de tratamiento,
+        // el registro anterior es un evento clínico distinto y se preserva en el historial.
+        if (sameTypeOnly && (t as any).odontogram_type !== sameTypeOnly) return false;
+        return true;
       }
       if ((t as any).tooth_number === toothNumber) return true;
       if (archTeeth) {
@@ -116,24 +129,27 @@ export function PatientProfilePage() {
   };
 
   const toothMutation = useMutation({
-    mutationFn: ({ toothNumber, update }: { toothNumber: number; update: { treatment_type: TreatmentType; color: TreatmentColor | null; faces: ToothFace[] } }) =>
+    mutationFn: ({ toothNumber, update }: { toothNumber: number; update: { treatment_type: TreatmentType; color: TreatmentColor | null; faces: ToothFace[] }; dentition?: DentitionMode }) =>
       updateTooth(patientId, toothNumber, update),
-    onSuccess: (_, { toothNumber, update }) => {
+    onSuccess: (_, { toothNumber, update, dentition }) => {
       setOdontogramPartialStart(null);
       queryClient.invalidateQueries({ queryKey: ["odontogram", patientId] });
       if (update.treatment_type === 'NONE') {
         autoDeleteTreatmentForTooth(toothNumber, false, true);
       } else {
-        autoAddTreatment(toothNumber, update.treatment_type, { color: update.color, faces: update.faces });
+        // Reemplaza el registro anterior sólo si es el mismo tipo de tratamiento (ej: más caras de Caries).
+        // Si cambia a un tipo distinto, se preserva el registro anterior como historial.
+        autoDeleteTreatmentForTooth(toothNumber, false, true, update.treatment_type);
+        autoAddTreatment(toothNumber, update.treatment_type, { color: update.color, faces: update.faces }, dentition);
       }
     },
     onError: () => alert("Error al guardar el cambio en el odontograma"),
   });
 
   const archMutation = useMutation({
-    mutationFn: ({ toothNumbers, update }: { toothNumbers: number[]; update: { treatment_type: TreatmentType; color: TreatmentColor | null; faces: ToothFace[] } }) =>
+    mutationFn: ({ toothNumbers, update }: { toothNumbers: number[]; update: { treatment_type: TreatmentType; color: TreatmentColor | null; faces: ToothFace[] }; dentition?: DentitionMode }) =>
       Promise.all(toothNumbers.map(n => updateTooth(patientId, n, update))),
-    onSuccess: (_, { toothNumbers, update }) => {
+    onSuccess: (_, { toothNumbers, update, dentition }) => {
       setOdontogramPartialStart(null);
       queryClient.invalidateQueries({ queryKey: ["odontogram", patientId] });
       if (update.treatment_type === 'NONE') {
@@ -141,7 +157,8 @@ export function PatientProfilePage() {
       } else {
         const label = TREATMENT_LABELS[update.treatment_type];
         if (!label) return;
-        const description = `${label} - Piezas ${toothNumbers.join(", ")}`;
+        const displayNumbers = dentition === 'nino' ? toothNumbers.map(n => toChildNumber(n) ?? n) : toothNumbers;
+        const description = `${label} - Piezas ${displayNumbers.join(", ")}`;
         const today = new Date().toISOString().split("T")[0];
         addTreatment(patientId, {
           description, price: 0, date_time: today,
@@ -150,6 +167,7 @@ export function PatientProfilePage() {
           odontogram_color: update.color ?? null,
           odontogram_faces: '[]',
           arch_teeth: toothNumbers.join(","),
+          dentition: dentition ?? null,
         })
           .then(() => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }))
           .catch(() => {});
@@ -163,9 +181,20 @@ export function PatientProfilePage() {
     queryFn: () => getPatientReport(patientId),
   });
 
+  const dentitionModeMutation = useMutation({
+    mutationFn: (mode: DentitionMode) => updateDentitionMode(patientId, mode),
+    onError: () => alert("Error al guardar el tipo de odontograma"),
+  });
+
+  const handleDentitionModeChange = (mode: DentitionMode) => {
+    setDentitionMode(mode);
+    dentitionModeMutation.mutate(mode);
+  };
+
   useEffect(() => {
     if (report) {
       const p = report.patient as any;
+      setDentitionMode(p.dentition_mode === 'nino' ? 'nino' : 'adulto');
       setMedicalHistory({
         blood_type: p.blood_type ?? "",
         allergies: p.allergies ?? "",
@@ -174,6 +203,9 @@ export function PatientProfilePage() {
         observations: p.observations ?? "",
       });
       setFiliatorio({
+        name: p.name ?? "",
+        dni: p.dni ?? "",
+        phone: p.phone ?? "",
         last_name: p.last_name ?? "",
         social_security: p.social_security ?? "",
         social_security_number: p.social_security_number ?? "",
@@ -471,8 +503,8 @@ export function PatientProfilePage() {
                 </div>
               </button>
               <div className="space-y-2">
-                <p className="font-bold text-lg">{filiatorio.last_name ? `${report.patient.name} ${filiatorio.last_name}` : report.patient.name}</p>
-                <p className="text-sm text-muted-foreground">DNI: {report.patient.dni || "—"}</p>
+                <p className="font-bold text-lg">{filiatorio.last_name ? `${filiatorio.name} ${filiatorio.last_name}` : filiatorio.name}</p>
+                <p className="text-sm text-muted-foreground">DNI: {filiatorio.dni || "—"}</p>
                 <div className="flex gap-2 mt-2">
                   <button onClick={() => photoInputRef.current?.click()}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-border/60 rounded-xl hover:bg-accent transition-colors">
@@ -489,11 +521,11 @@ export function PatientProfilePage() {
             {/* Campos filiatorios */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { label: "Nombre", value: report.patient.name, disabled: true },
+                { label: "Nombre", key: "name" },
                 { label: "Apellido", key: "last_name" },
-                { label: "DNI", value: report.patient.dni, disabled: true },
+                { label: "DNI", key: "dni" },
                 { label: "Fecha de nacimiento", key: "birth_date", type: "date" },
-                { label: "Teléfono", value: (report.patient as any).phone, disabled: true },
+                { label: "Teléfono", key: "phone" },
                 { label: "Correo electrónico", key: "email", type: "email" },
                 { label: "Obra social", key: "social_security" },
                 { label: "N° de obra social", key: "social_security_number" },
@@ -801,6 +833,7 @@ export function PatientProfilePage() {
                       <th className="px-4 py-3 font-semibold">Fecha</th>
                       <th className="px-4 py-3 font-semibold">Profesional</th>
                       <th className="px-4 py-3 font-semibold">Descripción</th>
+                      <th className="px-4 py-3 font-semibold">Odontograma</th>
                       <th className="px-4 py-3 font-semibold text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -810,6 +843,15 @@ export function PatientProfilePage() {
                         <td className="px-4 py-3 whitespace-nowrap">{t.date_time}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{t.professional_email || 'Desconocido'}</td>
                         <td className="px-4 py-3">{t.description}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {t.dentition === 'nino' ? (
+                            <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 font-semibold">Niño</span>
+                          ) : t.dentition === 'adulto' ? (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">Adulto</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
                           <button onClick={() => openTreatmentModalForEdit(t)} className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-accent text-primary hover:bg-accent/70 transition-colors" title="Editar tratamiento">
                             <Pencil className="h-4 w-4" />
@@ -837,6 +879,13 @@ export function PatientProfilePage() {
           <div className="space-y-4">
             <div className="flex justify-end gap-3">
               <button
+                onClick={() => setShowPriceList(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors"
+              >
+                <DollarSign className="h-4 w-4 text-primary" />
+                Lista de precios
+              </button>
+              <button
                 onClick={() => downloadOdontogramPdf(report.patient.name, odontogramPieces)}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors"
               >
@@ -849,6 +898,13 @@ export function PatientProfilePage() {
               >
                 <Wallet className="h-4 w-4 text-primary" />
                 Cuenta Corriente
+              </button>
+              <button
+                onClick={() => navigate('/laboratorio', { state: { patientId, patientName: report?.patient.name } })}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border/60 text-sm font-semibold hover:bg-accent transition-colors"
+              >
+                <FlaskConical className="h-4 w-4 text-primary" />
+                Laboratorio
               </button>
               <button
                 onClick={() => navigate('/appointments', { state: { preselectedPatientId: patientId } })}
@@ -865,22 +921,27 @@ export function PatientProfilePage() {
                 pieces={odontogramPieces}
                 patientName={report?.patient.name ?? ''}
                 treatments={report?.treatments ?? []}
-                onToothUpdate={(toothNumber, update) =>
-                  toothMutation.mutate({ toothNumber, update })
+                onToothUpdate={(toothNumber, update, dentition) =>
+                  toothMutation.mutate({ toothNumber, update, dentition })
                 }
-                onArchUpdate={(toothNumbers, update) =>
-                  archMutation.mutate({ toothNumbers, update })
+                onArchUpdate={(toothNumbers, update, dentition) =>
+                  archMutation.mutate({ toothNumbers, update, dentition })
                 }
                 partialStart={odontogramPartialStart}
                 onSetPartialStart={setOdontogramPartialStart}
-                onAddOverlay={(toothNumber, update) =>
-                  autoAddTreatment(toothNumber, update.treatment_type, { color: update.color, faces: update.faces })
-                }
+                onAddOverlay={(toothNumber, update, dentition) => {
+                  // Reemplaza el overlay anterior del mismo tipo en vez de acumular uno nuevo por cada click
+                  autoDeleteTreatmentForTooth(toothNumber, false, true, update.treatment_type);
+                  autoAddTreatment(toothNumber, update.treatment_type, { color: update.color, faces: update.faces }, dentition, true);
+                }}
                 onDeleteTreatment={(treatmentId) =>
                   deleteTreatmentMutation.mutate(treatmentId)
                 }
+                dentitionMode={dentitionMode}
+                onDentitionModeChange={handleDentitionModeChange}
               />
             )}
+            {showPriceList && <PriceListModal onClose={() => setShowPriceList(false)} />}
           </div>
         )}
 
@@ -979,14 +1040,19 @@ export function PatientProfilePage() {
         {/* TAB: Consentimiento Informado */}
         {activeTab === "consentimiento" && (() => {
           const consents: { type: ConsentType; label: string; desc: string; color: string }[] = [
-            { type: "extraccion",     label: "Extracción dental",           desc: "Simple o quirúrgica",          color: "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100" },
-            { type: "endodoncia",     label: "Endodoncia",                  desc: "Tratamiento de conductos",     color: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" },
-            { type: "implante",       label: "Implante dental",             desc: "Colocación quirúrgica",        color: "bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100" },
-            { type: "protesis",       label: "Prótesis dental",             desc: "Fija o removible",             color: "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" },
-            { type: "periodoncia",    label: "Cirugía periodontal",         desc: "Tratamiento de encías",        color: "bg-green-50 border-green-200 text-green-700 hover:bg-green-100" },
-            { type: "blanqueamiento", label: "Blanqueamiento dental",       desc: "Tratamiento estético",         color: "bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100" },
+            { type: "extraccion",         label: "Extracción dental",           desc: "Simple o quirúrgica",          color: "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100" },
+            { type: "endodoncia",         label: "Endodoncia",                  desc: "Tratamiento de conductos",     color: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" },
+            { type: "implante",           label: "Implante dental",             desc: "Colocación quirúrgica",        color: "bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100" },
+            { type: "protesis_fija",      label: "Prótesis fija",               desc: "Coronas y puentes",            color: "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" },
+            { type: "protesis_removible", label: "Prótesis removible",          desc: "Parcial removible",            color: "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100" },
+            { type: "periodoncia",        label: "Cirugía periodontal",         desc: "Tratamiento de encías",        color: "bg-green-50 border-green-200 text-green-700 hover:bg-green-100" },
+            { type: "cosmeticos",         label: "Procedimientos cosméticos",   desc: "Prácticas estéticas",          color: "bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100" },
+            { type: "biopsia",            label: "Biopsia",                     desc: "Toma de material",             color: "bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700 hover:bg-fuchsia-100" },
+            { type: "odontopediatria",    label: "Odontopediatría",             desc: "Menores de edad",              color: "bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100" },
+            { type: "ortodoncia",         label: "Ortodoncia",                  desc: "Ortodoncia / ortopedia",       color: "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100" },
           ];
           const profName = (report as any).professional_name ?? "";
+          const fullNameForAdmision = report.patient.name + ((report.patient as any).last_name ? ` ${(report.patient as any).last_name}` : "");
           return (
             <div className="space-y-5 max-w-2xl">
               <div>
@@ -994,11 +1060,19 @@ export function PatientProfilePage() {
                 <p className="text-sm text-muted-foreground">Seleccioná el tipo de tratamiento para generar el PDF con los datos del paciente, descripción del procedimiento, riesgos y firmas.</p>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground">Pieza/s dentaria/s (opcional)</label>
-                <input type="text" value={consentTooth} onChange={e => setConsentTooth(e.target.value)}
-                  placeholder="Ej: 36, 37"
-                  className="w-48 border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              <div className="flex flex-wrap gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Pieza/s dentaria/s (opcional)</label>
+                  <input type="text" value={consentTooth} onChange={e => setConsentTooth(e.target.value)}
+                    placeholder="Ej: 36, 37"
+                    className="w-48 border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Práctica específica (para consentimiento cosmético)</label>
+                  <input type="text" value={consentProcedureDetail} onChange={e => setConsentProcedureDetail(e.target.value)}
+                    placeholder="Ej: Carillas de resina"
+                    className="w-64 border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1007,7 +1081,7 @@ export function PatientProfilePage() {
                   return (
                     <div key={c.type} className={`flex items-center gap-3 p-4 rounded-2xl border ${c.color}`}>
                       <button
-                        onClick={() => downloadConsentPdf(fullName, report.patient.dni ?? "", profName, c.type, consentTooth || undefined)}
+                        onClick={() => downloadConsentPdf(fullName, report.patient.dni ?? "", profName, c.type, consentTooth || undefined, false, consentProcedureDetail || undefined)}
                         className="flex items-center gap-3 flex-1 text-left"
                       >
                         <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/70 shrink-0">
@@ -1023,7 +1097,7 @@ export function PatientProfilePage() {
                           onClick={async () => {
                             setSendingEmail(true);
                             try {
-                              const b64 = getConsentPdfBase64(fullName, report.patient.dni ?? "", profName, c.type, consentTooth || undefined);
+                              const b64 = getConsentPdfBase64(fullName, report.patient.dni ?? "", profName, c.type, consentTooth || undefined, consentProcedureDetail || undefined);
                               await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: fullName, subject: `Consentimiento informado - ${c.label}`, docType: "consentimiento", pdfBase64: b64, filename: `consentimiento_${c.type}_${fullName}.pdf` });
                               alert("✅ Email enviado correctamente");
                             } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
@@ -1039,6 +1113,38 @@ export function PatientProfilePage() {
               </div>
 
               <p className="text-xs text-muted-foreground">Cada PDF incluye: datos del paciente y profesional, descripción del procedimiento, riesgos, cuidados post-operatorios y espacio para firma.</p>
+
+              <div className="pt-3 border-t">
+                <div className="flex items-center gap-3 p-4 rounded-2xl border bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100">
+                  <button
+                    onClick={() => downloadAdmisionPdf(fullNameForAdmision)}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
+                    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/70 shrink-0">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Ficha de Admisión de Paciente</p>
+                      <p className="text-xs opacity-70">Historia clínica y datos filiatorios (2 páginas)</p>
+                    </div>
+                  </button>
+                  {(report.patient as any).email && (
+                    <button disabled={sendingEmail} title="Enviar por email"
+                      onClick={async () => {
+                        setSendingEmail(true);
+                        try {
+                          const b64 = getAdmisionPdfBase64(fullNameForAdmision);
+                          await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: fullNameForAdmision, subject: `Ficha de Admisión`, docType: "consentimiento", pdfBase64: b64, filename: `admision_${fullNameForAdmision}.pdf` });
+                          alert("✅ Email enviado correctamente");
+                        } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
+                        finally { setSendingEmail(false); }
+                      }}
+                      className="p-1.5 rounded-lg bg-white/70 hover:bg-white transition-colors disabled:opacity-50 shrink-0">
+                      <Mail className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           );
         })()}

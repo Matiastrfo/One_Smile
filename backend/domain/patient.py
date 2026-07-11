@@ -22,3 +22,4 @@ class Patient(BaseModel):
     email: Optional[str] = None
     birth_date: Optional[str] = None
     photo_path: Optional[str] = None
+    dentition_mode: Optional[str] = 'adulto'

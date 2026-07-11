@@ -9,11 +9,12 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 
+// Outer corners inset by 2px so strokeWidth doesn't bleed into adjacent teeth
 const FACE_PATHS: { face: ToothFace; points: string }[] = [
-  { face: 'top',    points: '0,0 100,0 75,25 25,25' },
-  { face: 'bottom', points: '25,75 75,75 100,100 0,100' },
-  { face: 'left',   points: '0,0 25,25 25,75 0,100' },
-  { face: 'right',  points: '100,0 100,100 75,75 75,25' },
+  { face: 'top',    points: '2,2 98,2 75,25 25,25' },
+  { face: 'bottom', points: '25,75 75,75 98,98 2,98' },
+  { face: 'left',   points: '2,2 25,25 25,75 2,98' },
+  { face: 'right',  points: '98,2 98,98 75,75 75,25' },
   { face: 'center', points: '25,25 75,25 75,75 25,75' },
 ];
 
@@ -30,6 +31,8 @@ interface ToothProps {
   isRangeStart?: boolean;
   puenteRole?: 'abutment' | 'pontic';
   overlays?: TreatmentOverlay[];
+  displayNumber?: number;
+  dimmed?: boolean;
 }
 
 function renderOverlaySvg(type: TreatmentType, color: string | null, faces: string[], _puenteRole?: 'abutment' | 'pontic') {
@@ -66,7 +69,7 @@ function renderOverlaySvg(type: TreatmentType, color: string | null, faces: stri
   }
 }
 
-export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = false, puenteRole, overlays = [] }: ToothProps) {
+export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = false, puenteRole, overlays = [], displayNumber, dimmed = false }: ToothProps) {
   const { tooth_number, treatment_type, color, faces } = piece;
   const overlayColor = color ? COLOR_HEX[color] : '#000';
   const [hoveredFace, setHoveredFace] = useState<ToothFace | null>(null);
@@ -78,9 +81,9 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
 
   return (
     <div
-      className={`flex flex-col items-center select-none rounded-sm transition-all ${isRangeStart ? 'ring-2 ring-offset-1 ring-yellow-400 ring-offset-background' : ''}`}
+      className={`flex flex-col items-center select-none rounded-sm transition-all ${isRangeStart ? 'ring-2 ring-offset-1 ring-yellow-400 ring-offset-background' : ''} ${dimmed ? 'opacity-35 grayscale' : ''}`}
     >
-      <span className="text-xs font-semibold mb-1 text-muted-foreground leading-none">{tooth_number}</span>
+      <span className="text-sm font-bold mb-1 text-foreground leading-none">{displayNumber ?? tooth_number}</span>
       <div
         className="relative w-16 h-16 cursor-pointer"
         onContextMenu={e => { e.preventDefault(); onErase(tooth_number); }}
@@ -94,7 +97,7 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
         <svg
           viewBox="0 0 100 100"
           className="w-full h-full"
-          style={{ stroke: '#9ca3af', strokeWidth: 2 }}
+          style={{ stroke: '#6b7280', strokeWidth: 3.5 }}
         >
           {/* 5 faces */}
           {FACE_PATHS.map(({ face, points }) => (

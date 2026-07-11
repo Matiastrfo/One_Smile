@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2 } from "lucide-react";
+import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2, FlaskConical, HardDrive, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMyProfile, uploadAvatar, updateMyName } from "../api/profileApi";
@@ -55,13 +55,50 @@ export function MainLayout() {
     { to: "/patients", icon: Users, label: "Gestión de Pacientes" },
     { to: "/cuenta-corriente", icon: Wallet, label: "Cuenta Corriente" },
     { to: "/estadisticas", icon: BarChart2, label: "Estadísticas" },
+    { to: "/laboratorio", icon: FlaskConical, label: "Laboratorio" },
   ];
 
-  if (user?.role === "admin") {
-    navLinks.push({ to: "/admin", icon: ShieldAlert, label: "Panel Admin" });
-    navLinks.push({ to: "/boxes", icon: Package, label: "Boxes" });
-    navLinks.push({ to: "/payments", icon: CreditCard, label: "Pagos" });
-  }
+  const adminLinks = user?.role === "admin"
+    ? [
+        { to: "/admin", icon: ShieldAlert, label: "Panel Admin" },
+        { to: "/boxes", icon: Package, label: "Boxes" },
+        { to: "/payments", icon: CreditCard, label: "Pagos" },
+      ]
+    : [];
+
+  const settingsLinks = user?.role === "admin"
+    ? [
+        { to: "/recordatorios", icon: Mail, label: "Recordatorios" },
+        { to: "/backups", icon: HardDrive, label: "Backups" },
+      ]
+    : [];
+
+  const renderNavLink = (link: { to: string; icon: typeof CalendarDays; label: string }) => {
+    const isActive = location.pathname.startsWith(link.to);
+    return (
+      <Link
+        key={link.to}
+        to={link.to}
+        onClick={() => setIsSidebarOpen(false)}
+        className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${
+          isActive
+            ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        }`}
+      >
+        <span
+          className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
+            isActive
+              ? "bg-white/20 text-white"
+              : "bg-accent text-primary group-hover:bg-white"
+          }`}
+        >
+          <link.icon className="h-4 w-4" />
+        </span>
+        {link.label}
+      </Link>
+    );
+  };
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
@@ -98,32 +135,27 @@ export function MainLayout() {
           <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Menú principal
           </p>
-          {navLinks.map((link) => {
-            const isActive = location.pathname.startsWith(link.to);
-            return (
-              <Link
-                key={link.to}
-                to={link.to}
-                onClick={() => setIsSidebarOpen(false)}
-                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                <span
-                  className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-white/20 text-white"
-                      : "bg-accent text-primary group-hover:bg-white"
-                  }`}
-                >
-                  <link.icon className="h-4 w-4" />
-                </span>
-                {link.label}
-              </Link>
-            );
-          })}
+          {navLinks.map(renderNavLink)}
+
+          {adminLinks.length > 0 && (
+            <>
+              <div className="my-3 border-t border-border/60" />
+              <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Administración
+              </p>
+              {adminLinks.map(renderNavLink)}
+            </>
+          )}
+
+          {settingsLinks.length > 0 && (
+            <>
+              <div className="my-3 border-t border-border/60" />
+              <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Configuración
+              </p>
+              {settingsLinks.map(renderNavLink)}
+            </>
+          )}
         </nav>
 
         <div className="p-4 border-t space-y-3">

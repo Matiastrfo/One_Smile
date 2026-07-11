@@ -18,6 +18,7 @@ export interface Patient {
   email?: string;
   birth_date?: string;
   photo_path?: string;
+  dentition_mode?: string;
 }
 
 export interface Appointment {
@@ -43,6 +44,8 @@ export interface Treatment {
   odontogram_type?: string;
   odontogram_color?: string;
   odontogram_faces?: string;
+  dentition?: string;
+  is_overlay?: boolean;
 }
 
 export interface MedicalReport {

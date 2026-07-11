@@ -6,6 +6,7 @@ from domain.user import User
 from persistence.database import get_connection
 from services.email_service import get_email_config, send_appointment_reminder, send_email
 from services.scheduler import check_and_send_reminders
+from services.secret_crypto import encrypt_secret
 import base64
 
 router = APIRouter()
@@ -42,7 +43,7 @@ def save_config(body: EmailConfig, current_user: User = Depends(require_admin)):
                 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?,
                 from_name=?, enabled=?
             WHERE id=1
-        """, (body.smtp_host, body.smtp_port, body.smtp_user, body.smtp_password,
+        """, (body.smtp_host, body.smtp_port, body.smtp_user, encrypt_secret(body.smtp_password),
               body.from_name, 1 if body.enabled else 0))
     else:
         # No sobreescribir la contraseña si viene vacía

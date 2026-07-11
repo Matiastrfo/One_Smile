@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
+import uuid
 from domain.user import User, UserCreate, UserInDB
 from persistence.user_repository import UserRepository
 from services.auth_service import get_password_hash
@@ -18,7 +19,7 @@ router = APIRouter()
 @router.post("/users", response_model=User)
 def create_professional(user: UserCreate, current_user: User = Depends(require_admin)):
     user_repo = UserRepository()
-    hashed_password = get_password_hash(user.password)
+    hashed_password = get_password_hash(user.password or str(uuid.uuid4()))
     user_in_db = UserInDB(
         email=user.email,
         password_hash=hashed_password,
