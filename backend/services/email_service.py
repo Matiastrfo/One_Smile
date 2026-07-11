@@ -11,13 +11,14 @@ logger = logging.getLogger(__name__)
 def get_email_config() -> dict:
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT smtp_host, smtp_port, smtp_user, smtp_password, from_name, enabled FROM email_config WHERE id = 1")
+    cursor.execute("SELECT smtp_host, smtp_port, smtp_user, smtp_password, from_name, enabled, whatsapp_number FROM email_config WHERE id = 1")
     row = cursor.fetchone()
     conn.close()
     if not row:
         return {}
     return {"smtp_host": row[0], "smtp_port": row[1], "smtp_user": row[2],
-            "smtp_password": decrypt_secret(row[3]) if row[3] else "", "from_name": row[4], "enabled": bool(row[5])}
+            "smtp_password": decrypt_secret(row[3]) if row[3] else "", "from_name": row[4], "enabled": bool(row[5]),
+            "whatsapp_number": row[6] or ""}
 
 def send_email(to_email: str, subject: str, html_body: str) -> tuple[bool, str]:
     config = get_email_config()
@@ -52,24 +53,23 @@ def send_email(to_email: str, subject: str, html_body: str) -> tuple[bool, str]:
         logger.error(f"Error al enviar email: {e}")
         return False, str(e)
 
-def send_appointment_reminder(patient_name: str, patient_email: str, date_time: str, professional_name: str, reason: str = "", professional_email: str = "") -> tuple[bool, str]:
+def send_appointment_reminder(patient_name: str, patient_email: str, date_time: str, professional_name: str, reason: str = "", whatsapp_number: str = "") -> tuple[bool, str]:
     date_part, time_part = (date_time.split(" ") + [""])[:2]
     subject = f"Recordatorio de turno — {date_part} {time_part}"
 
     action_buttons = ""
-    if professional_email:
-        confirm_subject = quote(f"Confirmo mi turno — {patient_name} {date_part} {time_part}")
-        confirm_body = quote(
-            f"Hola, confirmo que voy a asistir a mi turno del {date_part} a las {time_part}.\n\n"
+    clean_number = "".join(c for c in (whatsapp_number or "") if c.isdigit())
+    if clean_number:
+        confirm_text = quote(
+            f"Hola, confirmo que voy a asistir a mi turno del {date_part} a las {time_part}.\n"
             f"Paciente: {patient_name}"
         )
-        cancel_subject = quote(f"Cancelo mi turno — {patient_name} {date_part} {time_part}")
-        cancel_body = quote(
-            f"Hola, no voy a poder asistir a mi turno del {date_part} a las {time_part} y quiero cancelarlo.\n\n"
+        cancel_text = quote(
+            f"Hola, no voy a poder asistir a mi turno del {date_part} a las {time_part} y quiero cancelarlo.\n"
             f"Paciente: {patient_name}"
         )
-        confirm_url = f"mailto:{professional_email}?subject={confirm_subject}&body={confirm_body}"
-        cancel_url = f"mailto:{professional_email}?subject={cancel_subject}&body={cancel_body}"
+        confirm_url = f"https://wa.me/{clean_number}?text={confirm_text}"
+        cancel_url = f"https://wa.me/{clean_number}?text={cancel_text}"
         action_buttons = f"""
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px">
           <tr>
@@ -81,7 +81,7 @@ def send_appointment_reminder(patient_name: str, patient_email: str, date_time: 
             </td>
           </tr>
         </table>
-        <p style="color:#888;font-size:11px;margin:0 0 20px;text-align:center">Al tocar un botón se abre tu app de mail con una respuesta ya redactada — solo tenés que enviarla.</p>
+        <p style="color:#888;font-size:11px;margin:0 0 20px;text-align:center">Al tocar un botón se abre WhatsApp con un mensaje ya redactado — solo tenés que enviarlo.</p>
         """
 
     html = f"""

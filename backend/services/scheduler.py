@@ -22,13 +22,14 @@ def check_and_send_reminders():
     ws = window_start.strftime("%Y-%m-%d %H:%M")
     we = window_end.strftime("%Y-%m-%d %H:%M")
 
+    whatsapp_number = config.get("whatsapp_number", "")
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
         SELECT a.id, a.date_time, a.reason, a.status,
                p.name, p.email as patient_email,
-               COALESCE(NULLIF(u.name,''), u.email) as prof_name,
-               u.email as prof_email
+               COALESCE(NULLIF(u.name,''), u.email) as prof_name
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         JOIN users u ON a.professional_id = u.id
@@ -40,9 +41,9 @@ def check_and_send_reminders():
     conn.close()
 
     for row in rows:
-        appt_id, date_time, reason, status, patient_name, patient_email, prof_name, prof_email = row
+        appt_id, date_time, reason, status, patient_name, patient_email, prof_name = row
         logger.info(f"Enviando recordatorio a {patient_email} para turno {date_time}")
-        ok, msg = send_appointment_reminder(patient_name, patient_email, date_time, prof_name, reason or "", prof_email or "")
+        ok, msg = send_appointment_reminder(patient_name, patient_email, date_time, prof_name, reason or "", whatsapp_number)
         if not ok:
             logger.error(f"Fallo recordatorio a {patient_email}: {msg}")
 

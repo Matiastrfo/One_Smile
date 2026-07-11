@@ -446,6 +446,12 @@ def init_db():
         )
     """)
 
+    # Migración: número de WhatsApp de la clínica para confirmar/cancelar turnos por mail
+    cursor.execute("PRAGMA table_info(email_config)")
+    e_cols = [r[1] for r in cursor.fetchall()]
+    if "whatsapp_number" not in e_cols:
+        cursor.execute("ALTER TABLE email_config ADD COLUMN whatsapp_number TEXT NOT NULL DEFAULT ''")
+
     conn.commit()
     conn.close()
 

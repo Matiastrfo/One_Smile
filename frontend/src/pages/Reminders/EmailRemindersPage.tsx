@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Mail, Eye, EyeOff } from "lucide-react";
+import { Mail, Eye, EyeOff, MessageCircle } from "lucide-react";
 import api from "../../api/axios";
 
 export function EmailRemindersPage() {
   const [showEmailPass, setShowEmailPass] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState("");
-  const [emailForm, setEmailForm] = useState({ smtp_host: "smtp.gmail.com", smtp_port: 587, smtp_user: "", smtp_password: "", from_name: "OneSmile Odontología", enabled: false });
+  const [emailForm, setEmailForm] = useState({ smtp_host: "smtp.gmail.com", smtp_port: 587, smtp_user: "", smtp_password: "", from_name: "OneSmile Odontología", enabled: false, whatsapp_number: "" });
 
   const { data: emailConfig } = useQuery({
     queryKey: ["emailConfig"],
@@ -101,6 +101,19 @@ export function EmailRemindersPage() {
                 Outlook/Hotmail: tu contraseña normal (con verificación en 2 pasos puede requerir contraseña de app)
               </p>
             </div>
+          </div>
+
+          <div className="pt-2 border-t space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+              <MessageCircle className="h-3.5 w-3.5 text-[#25D366]" /> WhatsApp para confirmar/cancelar turnos
+            </label>
+            <input type="tel" value={emailForm.whatsapp_number}
+              placeholder="Ej: 5492611234567"
+              onChange={e => setEmailForm(prev => ({ ...prev, whatsapp_number: e.target.value }))}
+              className="w-full sm:w-64 border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            <p className="text-[10px] text-muted-foreground">
+              Con código de país, sin espacios ni "+" (ej: 54 9 261 123 4567 → 5492611234567). Los botones "Confirmar turno" / "Cancelar turno" del mail de recordatorio le abren WhatsApp al paciente directo a este número, con el mensaje ya escrito. Si lo dejás vacío, esos botones no aparecen.
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-2 pt-2">

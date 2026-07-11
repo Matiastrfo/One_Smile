@@ -151,8 +151,8 @@ export function DayPanel({ date, appointments, getPatientName, getPatientEmail, 
                     )}
                   </div>
 
-                  {/* Acciones — visibles on hover */}
-                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Acciones — siempre visibles */}
+                  <div className="flex items-center gap-0.5 shrink-0">
                     <button
                       onClick={e => { e.stopPropagation(); setNotesModal({ apptId: appt.id!, status: appt.status ?? "PENDING", notes: appt.notes ?? "" }); }}
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-amber-50 transition-colors"

@@ -18,6 +18,7 @@ class EmailConfig(BaseModel):
     smtp_password: str = ""
     from_name: str = "OneSmile Odontología"
     enabled: bool = False
+    whatsapp_number: str = ""
 
 class ManualReminderRequest(BaseModel):
     patient_name: str
@@ -37,24 +38,25 @@ def get_config(current_user: User = Depends(require_admin)):
 def save_config(body: EmailConfig, current_user: User = Depends(require_admin)):
     conn = get_connection()
     cursor = conn.cursor()
+    clean_whatsapp = "".join(c for c in body.whatsapp_number if c.isdigit())
     if body.smtp_password:
         clean_password = body.smtp_password.replace(" ", "")
         cursor.execute("""
             UPDATE email_config SET
                 smtp_host=?, smtp_port=?, smtp_user=?, smtp_password=?,
-                from_name=?, enabled=?
+                from_name=?, enabled=?, whatsapp_number=?
             WHERE id=1
         """, (body.smtp_host, body.smtp_port, body.smtp_user, encrypt_secret(clean_password),
-              body.from_name, 1 if body.enabled else 0))
+              body.from_name, 1 if body.enabled else 0, clean_whatsapp))
     else:
         # No sobreescribir la contraseña si viene vacía
         cursor.execute("""
             UPDATE email_config SET
                 smtp_host=?, smtp_port=?, smtp_user=?,
-                from_name=?, enabled=?
+                from_name=?, enabled=?, whatsapp_number=?
             WHERE id=1
         """, (body.smtp_host, body.smtp_port, body.smtp_user,
-              body.from_name, 1 if body.enabled else 0))
+              body.from_name, 1 if body.enabled else 0, clean_whatsapp))
     conn.commit()
     conn.close()
     return {"message": "Configuración guardada"}
@@ -73,7 +75,8 @@ def test_email(body: dict, current_user: User = Depends(require_admin)):
 
 @router.post("/reminder")
 def send_manual_reminder(body: ManualReminderRequest, current_user: User = Depends(get_current_user)):
-    ok, msg = send_appointment_reminder(body.patient_name, body.patient_email, body.date_time, body.professional_name, body.reason, current_user.email)
+    whatsapp_number = get_email_config().get("whatsapp_number", "")
+    ok, msg = send_appointment_reminder(body.patient_name, body.patient_email, body.date_time, body.professional_name, body.reason, whatsapp_number)
     if not ok:
         raise HTTPException(status_code=500, detail=msg)
     return {"message": "Recordatorio enviado"}
