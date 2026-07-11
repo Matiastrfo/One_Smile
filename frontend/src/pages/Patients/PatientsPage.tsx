@@ -16,7 +16,7 @@ export function PatientsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   
-  const [formData, setFormData] = useState({ name: "", dni: "", phone: "" });
+  const [formData, setFormData] = useState({ name: "", dni: "", phone: "", email: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -65,13 +65,13 @@ export function PatientsPage() {
 
   const openModalForCreate = () => {
     setEditingPatient(null);
-    setFormData({ name: "", dni: "", phone: "" });
+    setFormData({ name: "", dni: "", phone: "", email: "" });
     setIsModalOpen(true);
   };
 
   const openModalForEdit = (patient: Patient) => {
     setEditingPatient(patient);
-    setFormData({ name: patient.name, dni: patient.dni, phone: patient.phone ?? "" });
+    setFormData({ name: patient.name, dni: patient.dni, phone: patient.phone ?? "", email: (patient as any).email ?? "" });
     setIsModalOpen(true);
   };
 
@@ -249,6 +249,16 @@ export function PatientsPage() {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full border border-input bg-background px-3 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow"
                   placeholder="Ej. +5491112345678"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Email <span className="font-normal text-muted-foreground">(opcional)</span></label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full border border-input bg-background px-3 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow"
+                  placeholder="Ej. juan@gmail.com"
                 />
               </div>
               <div className="pt-4 mt-2 border-t flex justify-end gap-2">

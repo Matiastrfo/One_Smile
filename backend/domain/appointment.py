@@ -11,7 +11,7 @@ class Appointment(BaseModel):
     notes: Optional[str] = None
 
     def change_status(self, new_status: str):
-        valid_statuses = ["PENDING", "ATTENDED", "ABSENT", "CANCELLED"]
+        valid_statuses = ["PENDING", "CONFIRMED", "ATTENDED", "ABSENT", "CANCELLED"]
         if new_status not in valid_statuses:
             raise ValueError(f"Invalid status. Must be one of {valid_statuses}")
         self.status = new_status

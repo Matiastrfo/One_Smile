@@ -32,7 +32,7 @@ def create_appointment(appointment: Appointment, current_user: User = Depends(ge
 def get_appointments(current_user: User = Depends(get_current_user)):
     return appointment_service.get_appointments_by_professional(current_user.id)
 
-VALID_STATUSES = {"PENDING", "ATTENDED", "ABSENT", "CANCELLED"}
+VALID_STATUSES = {"PENDING", "CONFIRMED", "ATTENDED", "ABSENT", "CANCELLED"}
 
 @router.delete("/{appointment_id}")
 def delete_appointment(appointment_id: int, current_user: User = Depends(get_current_user)):
@@ -83,7 +83,7 @@ def get_appointment_stats(current_user: User = Depends(get_current_user)):
     months: dict = {}
     for month, status, cnt in cursor.fetchall():
         if month not in months:
-            months[month] = {"month": month, "ATTENDED": 0, "ABSENT": 0, "CANCELLED": 0, "PENDING": 0, "total": 0}
+            months[month] = {"month": month, "ATTENDED": 0, "ABSENT": 0, "CANCELLED": 0, "PENDING": 0, "CONFIRMED": 0, "total": 0}
         months[month][status] = cnt
         months[month]["total"] += cnt
     by_month = sorted(months.values(), key=lambda x: x["month"])[-12:]

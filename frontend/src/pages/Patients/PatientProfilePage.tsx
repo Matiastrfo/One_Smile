@@ -254,6 +254,15 @@ export function PatientProfilePage() {
     setShowCamera(false);
   };
 
+  // Libera la cámara si el usuario navega a otro paciente (o cierra la pestaña) con el modal abierto,
+  // en vez de cerrarla con el botón — evita dejar el dispositivo de cámara tomado indefinidamente.
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    };
+  }, []);
+
   const capturePhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement("canvas");

@@ -1,8 +1,10 @@
 import smtplib
 import logging
+from urllib.parse import quote
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from persistence.database import get_connection
+from services.secret_crypto import decrypt_secret
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ def get_email_config() -> dict:
     if not row:
         return {}
     return {"smtp_host": row[0], "smtp_port": row[1], "smtp_user": row[2],
-            "smtp_password": row[3], "from_name": row[4], "enabled": bool(row[5])}
+            "smtp_password": decrypt_secret(row[3]) if row[3] else "", "from_name": row[4], "enabled": bool(row[5])}
 
 def send_email(to_email: str, subject: str, html_body: str) -> tuple[bool, str]:
     config = get_email_config()
@@ -50,9 +52,38 @@ def send_email(to_email: str, subject: str, html_body: str) -> tuple[bool, str]:
         logger.error(f"Error al enviar email: {e}")
         return False, str(e)
 
-def send_appointment_reminder(patient_name: str, patient_email: str, date_time: str, professional_name: str, reason: str = "") -> tuple[bool, str]:
+def send_appointment_reminder(patient_name: str, patient_email: str, date_time: str, professional_name: str, reason: str = "", professional_email: str = "") -> tuple[bool, str]:
     date_part, time_part = (date_time.split(" ") + [""])[:2]
     subject = f"Recordatorio de turno — {date_part} {time_part}"
+
+    action_buttons = ""
+    if professional_email:
+        confirm_subject = quote(f"Confirmo mi turno — {patient_name} {date_part} {time_part}")
+        confirm_body = quote(
+            f"Hola, confirmo que voy a asistir a mi turno del {date_part} a las {time_part}.\n\n"
+            f"Paciente: {patient_name}"
+        )
+        cancel_subject = quote(f"Cancelo mi turno — {patient_name} {date_part} {time_part}")
+        cancel_body = quote(
+            f"Hola, no voy a poder asistir a mi turno del {date_part} a las {time_part} y quiero cancelarlo.\n\n"
+            f"Paciente: {patient_name}"
+        )
+        confirm_url = f"mailto:{professional_email}?subject={confirm_subject}&body={confirm_body}"
+        cancel_url = f"mailto:{professional_email}?subject={cancel_subject}&body={cancel_body}"
+        action_buttons = f"""
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px">
+          <tr>
+            <td align="center" style="padding:0 6px 0 0">
+              <a href="{confirm_url}" style="display:block;background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;font-size:13px;padding:12px 8px;border-radius:8px;text-align:center">✅ Confirmar turno</a>
+            </td>
+            <td align="center" style="padding:0 0 0 6px">
+              <a href="{cancel_url}" style="display:block;background:#dc2626;color:#fff;text-decoration:none;font-weight:bold;font-size:13px;padding:12px 8px;border-radius:8px;text-align:center">✖ Cancelar turno</a>
+            </td>
+          </tr>
+        </table>
+        <p style="color:#888;font-size:11px;margin:0 0 20px;text-align:center">Al tocar un botón se abre tu app de mail con una respuesta ya redactada — solo tenés que enviarla.</p>
+        """
+
     html = f"""
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden">
       <div style="background:#0a285a;padding:24px;text-align:center">
@@ -68,6 +99,7 @@ def send_appointment_reminder(patient_name: str, patient_email: str, date_time: 
           {"<p style='margin:4px 0;font-size:14px;color:#0a285a'><strong>📋 Motivo:</strong> " + reason + "</p>" if reason else ""}
           <p style="margin:4px 0;font-size:14px;color:#0a285a"><strong>👨‍⚕️ Profesional:</strong> {professional_name}</p>
         </div>
+        {action_buttons}
         <p style="color:#666;font-size:13px">Si necesitás cancelar o reprogramar tu turno, por favor comunicate con nosotros con anticipación.</p>
       </div>
       <div style="background:#0a285a;padding:14px;text-align:center">

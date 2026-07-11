@@ -1,6 +1,6 @@
 import { } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart2, Users, CheckCircle, XCircle, Clock, Ban } from "lucide-react";
+import { BarChart2, Users, CheckCircle, XCircle, Clock, Ban, CalendarCheck } from "lucide-react";
 import api from "../../api/axios";
 
 interface Stats {
@@ -13,9 +13,10 @@ interface Stats {
 
 const STATUS_CONFIG = {
   ATTENDED:  { label: "Asistidos",   color: "bg-green-500",  text: "text-green-600",  icon: CheckCircle },
+  CONFIRMED: { label: "Confirmados", color: "bg-blue-500",   text: "text-blue-600",   icon: CalendarCheck },
   ABSENT:    { label: "Ausentes",    color: "bg-rose-500",   text: "text-rose-600",   icon: XCircle },
   CANCELLED: { label: "Cancelados",  color: "bg-amber-500",  text: "text-amber-600",  icon: Ban },
-  PENDING:   { label: "Pendientes",  color: "bg-blue-500",   text: "text-blue-600",   icon: Clock },
+  PENDING:   { label: "Pendientes",  color: "bg-slate-500",  text: "text-slate-600",  icon: Clock },
 };
 
 const MONTH_LABELS = ["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -57,6 +58,7 @@ export function EstadisticasPage() {
 
   const total = stats.total;
   const attended  = stats.by_status.ATTENDED  ?? 0;
+  const confirmed = stats.by_status.CONFIRMED ?? 0;
   const absent    = stats.by_status.ABSENT    ?? 0;
   const cancelled = stats.by_status.CANCELLED ?? 0;
   const pending   = stats.by_status.PENDING   ?? 0;
@@ -79,9 +81,10 @@ export function EstadisticasPage() {
       </div>
 
       {/* Tarjetas resumen */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
           { key: "ATTENDED",  val: attended,  extra: `${pct(attended,total)}% del total` },
+          { key: "CONFIRMED", val: confirmed, extra: `${pct(confirmed,total)}% del total` },
           { key: "ABSENT",    val: absent,    extra: `${pct(absent,total)}% del total` },
           { key: "CANCELLED", val: cancelled, extra: `${pct(cancelled,total)}% del total` },
           { key: "PENDING",   val: pending,   extra: "Sin confirmar" },
