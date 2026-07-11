@@ -537,9 +537,8 @@ export function PatientProfilePage() {
                   <label className="text-sm font-semibold text-foreground">{f.label}</label>
                   <input
                     type={f.type || "text"}
-                    disabled={!!f.disabled}
-                    value={f.disabled ? (f.value ?? "") : (filiatorio as any)[f.key!] ?? ""}
-                    onChange={e => !f.disabled && f.key && setFiliatorio(prev => ({ ...prev, [f.key!]: e.target.value }))}
+                    value={(filiatorio as any)[f.key!] ?? ""}
+                    onChange={e => setFiliatorio(prev => ({ ...prev, [f.key!]: e.target.value }))}
                     className="w-full border border-input bg-background text-foreground px-3 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
