@@ -7,6 +7,7 @@ class User(BaseModel):
     role: str
     name: str = ""
     avatar_path: Optional[str] = None
+    price_list_path: Optional[str] = None
 
 class UserCreate(BaseModel):
     email: EmailStr

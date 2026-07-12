@@ -31,7 +31,6 @@ from api.profile_router import router as profile_router
 from api.email_router import router as email_router
 from api.backup_router import router as backup_router
 from api.lab_router import router as lab_router
-from api.treatment_price_router import router as treatment_price_router
 from services.scheduler import start_scheduler, stop_scheduler
 from services.backup_service import run_backup
 
@@ -76,6 +75,7 @@ os.makedirs(os.path.join(UPLOADS_DIR, "avatars"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "patients"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "images"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "labs"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "price-lists"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 @app.on_event("startup")
@@ -106,7 +106,6 @@ app.include_router(profile_router, prefix="/api/profile", tags=["profile"])
 app.include_router(email_router, prefix="/api/email", tags=["email"])
 app.include_router(backup_router, prefix="/api/backup", tags=["backup"])
 app.include_router(lab_router, prefix="/api/labs", tags=["labs"])
-app.include_router(treatment_price_router, prefix="/api/treatment-prices", tags=["treatment-prices"])
 
 @app.get("/")
 def read_root():

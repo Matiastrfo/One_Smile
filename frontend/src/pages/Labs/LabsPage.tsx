@@ -174,7 +174,7 @@ function JobRow({ job, showLabName, onReceive, onDelete }: { job: LabJob; showLa
         <StatusBadge status={job.status} />
         {job.status === "SENT" && (
           <button onClick={onReceive}
-            className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors" title="Marcar como recibido">
+            className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors" title="Marcar como recibido">
             <Check className="h-4 w-4" />
           </button>
         )}

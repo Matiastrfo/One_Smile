@@ -14,12 +14,14 @@ import { LabsPage } from "./pages/Labs/LabsPage";
 import { BackupsPage } from "./pages/Backups/BackupsPage";
 import { EmailRemindersPage } from "./pages/Reminders/EmailRemindersPage";
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
+    <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <HashRouter>
@@ -51,6 +53,7 @@ function App() {
         </HashRouter>
       </AuthProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

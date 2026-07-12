@@ -42,3 +42,31 @@ async def upload_avatar(file: UploadFile = File(...), current_user: User = Depen
     avatar_path = f"/uploads/avatars/{filename}"
     updated = user_repo.update(current_user.id, avatar_path=avatar_path)
     return updated
+
+PRICE_LIST_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "price-lists")
+MAX_PRICE_LIST_SIZE = 20 * 1024 * 1024  # 20MB
+
+@router.post("/price-list", response_model=User)
+async def upload_price_list(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else ""
+    if ext != "pdf":
+        raise HTTPException(status_code=400, detail="Extensión de archivo no permitida")
+
+    content = await file.read()
+    if len(content) > MAX_PRICE_LIST_SIZE:
+        raise HTTPException(status_code=413, detail="Archivo demasiado grande. Máximo 20MB")
+
+    os.makedirs(PRICE_LIST_DIR, exist_ok=True)
+
+    filename = f"{current_user.id}_{uuid.uuid4().hex}.pdf"
+    filepath = os.path.join(PRICE_LIST_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(content)
+
+    price_list_path = f"/uploads/price-lists/{filename}"
+    updated = user_repo.update(current_user.id, price_list_path=price_list_path)
+    return updated

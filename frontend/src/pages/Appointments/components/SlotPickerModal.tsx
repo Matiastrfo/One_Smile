@@ -170,7 +170,7 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
                       <span className="font-semibold">{DAY_LABELS[d.getDay()]}</span>
                       <span className={`font-bold text-sm ${isToday && !isSelected ? 'text-primary' : ''}`}>{d.getDate()}</span>
                       {hasAvail && !isPast && (
-                        <span className={`text-[10px] mt-0.5 ${isSelected ? 'text-primary-foreground/80' : free > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        <span className={`text-[10px] mt-0.5 ${isSelected ? 'text-primary-foreground/80' : free > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
                           {free > 0 ? `${free} lib.` : 'lleno'}
                         </span>
                       )}

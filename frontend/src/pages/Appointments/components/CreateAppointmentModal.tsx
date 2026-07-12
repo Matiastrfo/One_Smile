@@ -77,7 +77,7 @@ export function CreateAppointmentModal({ isOpen, onClose, onSubmit, patients, is
               </SelectContent>
             </Select>
             {patients.length === 0 && (
-              <p className="text-xs text-rose-500 font-medium mt-1 bg-rose-50 px-3 py-2 rounded-lg">No hay pacientes registrados. Ve a Gestión de Pacientes primero.</p>
+              <p className="text-xs text-rose-500 font-medium mt-1 bg-rose-50 dark:bg-rose-950/40 px-3 py-2 rounded-lg">No hay pacientes registrados. Ve a Gestión de Pacientes primero.</p>
             )}
           </div>
 

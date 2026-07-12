@@ -351,6 +351,7 @@ export function downloadMedicalHistoryPdf(patient: any) {
   field('Dirección', patient.address);
   field('Localidad', patient.city);
   field('Provincia', patient.province);
+  field('País', patient.country);
   y += 4;
 
   // ── Datos médicos ──────────────────────────────────────────────────────
@@ -464,7 +465,7 @@ export function downloadFullHistoryPdf(patient: any, pieces: DentalPiece[], trea
   y = field(doc, 'Obra social', patient.social_security, y);
   y = field(doc, 'N° obra social', patient.social_security_number, y);
   y = field(doc, 'Dirección', patient.address, y);
-  y = field(doc, 'Localidad / Provincia', [patient.city, patient.province].filter(Boolean).join(', '), y);
+  y = field(doc, 'Localidad / Provincia / País', [patient.city, patient.province, patient.country].filter(Boolean).join(', '), y);
   y += 4;
 
   y = sectionTitle(doc, 'Datos Médicos', y);

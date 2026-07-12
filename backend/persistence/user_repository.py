@@ -52,13 +52,13 @@ class UserRepository:
         conn = get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, email, role, name, avatar_path FROM users ORDER BY CASE WHEN role = 'admin' THEN 1 ELSE 2 END, email ASC")
+            cursor.execute("SELECT id, email, role, name, avatar_path, price_list_path FROM users ORDER BY CASE WHEN role = 'admin' THEN 1 ELSE 2 END, email ASC")
             rows = cursor.fetchall()
-            return [User(id=row[0], email=row[1], role=row[2], name=row[3] or "", avatar_path=row[4]) for row in rows]
+            return [User(id=row[0], email=row[1], role=row[2], name=row[3] or "", avatar_path=row[4], price_list_path=row[5]) for row in rows]
         finally:
             conn.close()
 
-    def update(self, user_id: int, email=None, role=None, password_hash=None, name=None, avatar_path=None):
+    def update(self, user_id: int, email=None, role=None, password_hash=None, name=None, avatar_path=None, price_list_path=None):
         conn = get_connection()
         cursor = conn.cursor()
         fields, params = [], []
@@ -72,26 +72,28 @@ class UserRepository:
             fields.append("name = ?"); params.append(name)
         if avatar_path is not None:
             fields.append("avatar_path = ?"); params.append(avatar_path)
+        if price_list_path is not None:
+            fields.append("price_list_path = ?"); params.append(price_list_path)
         if not fields:
             conn.close(); return None
         params.append(user_id)
         cursor.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", params)
         conn.commit()
-        cursor.execute("SELECT id, email, role, name, avatar_path FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT id, email, role, name, avatar_path, price_list_path FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         conn.close()
         if row:
-            return User(id=row[0], email=row[1], role=row[2], name=row[3] or "", avatar_path=row[4])
+            return User(id=row[0], email=row[1], role=row[2], name=row[3] or "", avatar_path=row[4], price_list_path=row[5])
         return None
 
     def get_by_id(self, user_id: int) -> Optional[User]:
         conn = get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, email, role, name, avatar_path FROM users WHERE id = ?", (user_id,))
+            cursor.execute("SELECT id, email, role, name, avatar_path, price_list_path FROM users WHERE id = ?", (user_id,))
             row = cursor.fetchone()
             if row:
-                return User(id=row[0], email=row[1], role=row[2], name=row[3] or "", avatar_path=row[4])
+                return User(id=row[0], email=row[1], role=row[2], name=row[3] or "", avatar_path=row[4], price_list_path=row[5])
             return None
         finally:
             conn.close()

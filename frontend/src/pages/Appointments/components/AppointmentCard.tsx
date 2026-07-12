@@ -63,9 +63,9 @@ export function AppointmentCard({ appointment, patientName, onDelete, onStatusCh
             <SelectTrigger
               aria-label="Cambiar estado del turno"
               className={`w-auto gap-2 cursor-pointer text-xs font-semibold tracking-wide uppercase border rounded-full px-3 py-1.5 shadow-sm focus:ring-offset-1 ${
-                appointment.status === 'ATTENDED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' :
-                appointment.status === 'ABSENT' ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' :
-                'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                appointment.status === 'ATTENDED' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50' :
+                appointment.status === 'ABSENT' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/50' :
+                'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <SelectValue />

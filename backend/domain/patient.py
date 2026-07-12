@@ -19,6 +19,7 @@ class Patient(BaseModel):
     address: Optional[str] = None
     province: Optional[str] = None
     city: Optional[str] = None
+    country: Optional[str] = None
     email: Optional[str] = None
     birth_date: Optional[str] = None
     photo_path: Optional[str] = None

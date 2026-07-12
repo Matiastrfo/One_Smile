@@ -1,10 +1,12 @@
 import { useState, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2, FlaskConical, HardDrive, Mail } from "lucide-react";
+import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2, FlaskConical, HardDrive, Mail, Sun, Moon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMyProfile, uploadAvatar, updateMyName } from "../api/profileApi";
 import logoSidebar from "../assets/logo-sidebar.png.png";
+import logoSidebarDark from "../assets/logo-sidebar-dark.png";
 import { TodayBanner } from "../components/TodayBanner";
 
 export function MainLayout() {
@@ -13,6 +15,7 @@ export function MainLayout() {
   const [nameInput, setNameInput] = useState("");
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +123,7 @@ export function MainLayout() {
       >
         <div className="px-3 py-4 border-b flex justify-between items-center">
           <div className="flex-1 flex flex-col items-center gap-1">
-            <img src={logoSidebar} alt="OneSmile" className="h-32 w-auto object-contain" />
+            <img src={theme === "dark" ? logoSidebarDark : logoSidebar} alt="OneSmile" className="h-32 w-auto object-contain" />
             <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-muted-foreground">Odontología Trifiro</span>
           </div>
           <button
@@ -214,8 +217,15 @@ export function MainLayout() {
             </div>
           </div>
           <button
+            onClick={toggleTheme}
+            className="flex items-center w-full gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+          </button>
+          <button
             onClick={logout}
-            className="flex items-center w-full gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium text-rose-500 hover:bg-rose-50"
+            className="flex items-center w-full gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
           >
             <LogOut className="h-4 w-4" />
             Cerrar Sesión

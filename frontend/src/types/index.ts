@@ -15,6 +15,7 @@ export interface Patient {
   address?: string;
   province?: string;
   city?: string;
+  country?: string;
   email?: string;
   birth_date?: string;
   photo_path?: string;

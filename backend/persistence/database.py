@@ -435,22 +435,24 @@ def init_db():
     if "dentition_mode" not in p_cols:
         cursor.execute("ALTER TABLE patients ADD COLUMN dentition_mode TEXT NOT NULL DEFAULT 'adulto'")
 
-    # Tabla: lista de precios de tratamientos por profesional
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS treatment_prices (
-            professional_id INTEGER NOT NULL,
-            treatment_type TEXT NOT NULL,
-            price REAL NOT NULL DEFAULT 0,
-            PRIMARY KEY (professional_id, treatment_type),
-            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-
     # Migración: número de WhatsApp de la clínica para confirmar/cancelar turnos por mail
     cursor.execute("PRAGMA table_info(email_config)")
     e_cols = [r[1] for r in cursor.fetchall()]
     if "whatsapp_number" not in e_cols:
         cursor.execute("ALTER TABLE email_config ADD COLUMN whatsapp_number TEXT NOT NULL DEFAULT ''")
+
+    # Migración: país en datos filiatorios del paciente
+    cursor.execute("PRAGMA table_info(patients)")
+    p_cols2 = [r[1] for r in cursor.fetchall()]
+    if "country" not in p_cols2:
+        cursor.execute("ALTER TABLE patients ADD COLUMN country TEXT")
+
+    # Migración: PDF de lista de precios por profesional (reemplaza treatment_prices)
+    cursor.execute("PRAGMA table_info(users)")
+    u_cols = [r[1] for r in cursor.fetchall()]
+    if "price_list_path" not in u_cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN price_list_path TEXT")
+    cursor.execute("DROP TABLE IF EXISTS treatment_prices")
 
     conn.commit()
     conn.close()

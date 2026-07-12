@@ -450,10 +450,10 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
                                 key={face}
                                 onClick={() => handleRemoveFace(toothModalNumber!, face)}
                                 title={`Quitar cara ${getFaceLabel(face, toothModalNumber!)}`}
-                                className="group flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-white dark:bg-background border border-border/60 text-xs font-medium hover:bg-rose-50 hover:border-rose-300 transition-colors"
+                                className="group flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-white dark:bg-background border border-border/60 text-xs font-medium hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:border-rose-300 dark:hover:border-rose-800 transition-colors"
                               >
                                 {getFaceLabel(face, toothModalNumber!)}
-                                <X className="h-3 w-3 text-muted-foreground group-hover:text-rose-600" />
+                                <X className="h-3 w-3 text-muted-foreground group-hover:text-rose-600 dark:group-hover:text-rose-400" />
                               </button>
                             ))}
                           </div>
@@ -464,7 +464,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
                           onDeleteTreatment?.(t.id);
                         }}
                         title="Eliminar todo el tratamiento"
-                        className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                        className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

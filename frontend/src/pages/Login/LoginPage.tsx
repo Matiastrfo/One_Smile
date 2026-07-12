@@ -3,8 +3,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Lock, User, AlertCircle, Eye, EyeOff, ShieldCheck, KeyRound, Copy, CheckCheck } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
+import logoDark from "../../assets/logo-dark.png";
 
 const SAVED_USERS_KEY = "onesmile_saved_users";
 function getSavedUsers(): string[] {
@@ -21,6 +23,7 @@ type Screen = "login" | "setup" | "recover";
 export function LoginPage() {
   const [screen, setScreen] = useState<Screen>("login");
   const { login } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   // Check if first-time setup needed
@@ -52,7 +55,7 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4 selection:bg-primary/20">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center mb-10">
-          <img src={logo} alt="OneSmile" className="h-56 w-auto mb-2 object-contain" />
+          <img src={theme === "dark" ? logoDark : logo} alt="OneSmile" className="h-56 w-auto mb-2 object-contain" />
           {screen === "setup" && <p className="text-muted-foreground mt-2 font-medium text-center">Primera vez aquí — creá tu cuenta de administrador</p>}
           {screen === "login" && <p className="text-muted-foreground mt-2 font-medium">Ingresá tus credenciales para continuar</p>}
           {screen === "recover" && <p className="text-muted-foreground mt-2 font-medium">Recuperar contraseña</p>}

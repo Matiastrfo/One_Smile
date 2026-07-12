@@ -15,6 +15,9 @@ import { getFaceLabels } from "../../utils/toothFaces";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram, { type DentitionMode, toChildNumber } from "../../components/Odontogram/Odontogram";
 import { PriceListModal } from "../../components/Odontogram/PriceListModal";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../../components/ui/select";
+
+const COUNTRIES = ["Argentina", "Uruguay", "Chile", "Paraguay", "Bolivia", "Brasil", "Perú", "Colombia", "Venezuela", "Ecuador", "México", "España", "Estados Unidos", "Otro"];
 
 export function PatientProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -43,7 +46,7 @@ export function PatientProfilePage() {
   const [filiatorio, setFiliatorio] = useState({
     name: "", dni: "", phone: "",
     last_name: "", social_security: "", social_security_number: "",
-    address: "", province: "", city: "", email: "", birth_date: "",
+    address: "", province: "", city: "", country: "", email: "", birth_date: "",
   });
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [showCamera, setShowCamera] = useState(false);
@@ -212,6 +215,7 @@ export function PatientProfilePage() {
         address: p.address ?? "",
         province: p.province ?? "",
         city: p.city ?? "",
+        country: p.country ?? "",
         email: p.email ?? "",
         birth_date: p.birth_date ?? "",
       });
@@ -539,17 +543,29 @@ export function PatientProfilePage() {
                 { label: "Obra social", key: "social_security" },
                 { label: "N° de obra social", key: "social_security_number" },
                 { label: "Dirección", key: "address" },
+                { label: "País", key: "country" },
                 { label: "Localidad", key: "city" },
                 { label: "Provincia", key: "province" },
               ].map(f => (
                 <div key={f.label} className="space-y-1.5">
                   <label className="text-sm font-semibold text-foreground">{f.label}</label>
-                  <input
-                    type={f.type || "text"}
-                    value={(filiatorio as any)[f.key!] ?? ""}
-                    onChange={e => setFiliatorio(prev => ({ ...prev, [f.key!]: e.target.value }))}
-                    className="w-full border border-input bg-background text-foreground px-3 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
+                  {f.key === "country" ? (
+                    <Select value={filiatorio.country} onValueChange={v => setFiliatorio(prev => ({ ...prev, country: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar país" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <input
+                      type={f.type || "text"}
+                      value={(filiatorio as any)[f.key!] ?? ""}
+                      onChange={e => setFiliatorio(prev => ({ ...prev, [f.key!]: e.target.value }))}
+                      className="w-full border border-input bg-background text-foreground px-3 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -741,7 +757,7 @@ export function PatientProfilePage() {
                                   )}
                                   <button
                                     onClick={() => { if (confirm("¿Eliminar esta imagen?")) deleteImageMutation.mutate(img.id!); }}
-                                    className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 transition-colors"
+                                    className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                                   >
                                     <Trash2 className="h-3 w-3" /> Eliminar
                                   </button>
@@ -784,7 +800,7 @@ export function PatientProfilePage() {
                           {img.description && <p className="text-[10px] text-muted-foreground px-2 pt-1 truncate">{img.description}</p>}
                           <button
                             onClick={() => { if (confirm("¿Eliminar este scanner?")) deleteImageMutation.mutate(img.id!); }}
-                            className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 transition-colors"
+                            className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                           >
                             <Trash2 className="h-3 w-3" /> Eliminar
                           </button>
@@ -853,9 +869,9 @@ export function PatientProfilePage() {
                         <td className="px-4 py-3">{t.description}</td>
                         <td className="px-4 py-3 text-xs">
                           {t.dentition === 'nino' ? (
-                            <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 font-semibold">Niño</span>
+                            <span className="px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-semibold">Niño</span>
                           ) : t.dentition === 'adulto' ? (
-                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">Adulto</span>
+                            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Adulto</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
@@ -866,7 +882,7 @@ export function PatientProfilePage() {
                           </button>
                           <button
                             onClick={() => { if (confirm("¿Eliminár este tratamiento?")) deleteTreatmentMutation.mutate(t.id!) }}
-                            className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                            className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
                             title="Eliminar tratamiento"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1000,7 +1016,7 @@ export function PatientProfilePage() {
                     {rows.length === 0 ? (
                       <tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground text-sm">Sin movimientos registrados.</td></tr>
                     ) : rows.map((row, i) => (
-                      <tr key={row.id ?? i} className={`hover:bg-muted/30 transition-colors ${row.haber > 0 ? "bg-emerald-50/30" : ""}`}>
+                      <tr key={row.id ?? i} className={`hover:bg-muted/30 transition-colors ${row.haber > 0 ? "bg-emerald-50/30 dark:bg-emerald-950/20" : ""}`}>
                         <td className="px-4 py-3 text-muted-foreground tabular-nums whitespace-nowrap">{row.date}</td>
                         <td className="px-4 py-3">
                           <p className="font-medium">{row.detail}</p>
@@ -1017,7 +1033,7 @@ export function PatientProfilePage() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button onClick={() => { if (confirm("¿Eliminar este movimiento?")) deleteEntryMutation.mutate(row.id!); }}
-                            className="p-1 rounded text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                            className="p-1 rounded text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </td>
@@ -1048,16 +1064,16 @@ export function PatientProfilePage() {
         {/* TAB: Consentimiento Informado */}
         {activeTab === "consentimiento" && (() => {
           const consents: { type: ConsentType; label: string; desc: string; color: string }[] = [
-            { type: "extraccion",         label: "Extracción dental",           desc: "Simple o quirúrgica",          color: "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100" },
-            { type: "endodoncia",         label: "Endodoncia",                  desc: "Tratamiento de conductos",     color: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" },
-            { type: "implante",           label: "Implante dental",             desc: "Colocación quirúrgica",        color: "bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100" },
-            { type: "protesis_fija",      label: "Prótesis fija",               desc: "Coronas y puentes",            color: "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" },
-            { type: "protesis_removible", label: "Prótesis removible",          desc: "Parcial removible",            color: "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100" },
-            { type: "periodoncia",        label: "Cirugía periodontal",         desc: "Tratamiento de encías",        color: "bg-green-50 border-green-200 text-green-700 hover:bg-green-100" },
-            { type: "cosmeticos",         label: "Procedimientos cosméticos",   desc: "Prácticas estéticas",          color: "bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100" },
-            { type: "biopsia",            label: "Biopsia",                     desc: "Toma de material",             color: "bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700 hover:bg-fuchsia-100" },
-            { type: "odontopediatria",    label: "Odontopediatría",             desc: "Menores de edad",              color: "bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100" },
-            { type: "ortodoncia",         label: "Ortodoncia",                  desc: "Ortodoncia / ortopedia",       color: "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100" },
+            { type: "extraccion",         label: "Extracción dental",           desc: "Simple o quirúrgica",          color: "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50" },
+            { type: "endodoncia",         label: "Endodoncia",                  desc: "Tratamiento de conductos",     color: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50" },
+            { type: "implante",           label: "Implante dental",             desc: "Colocación quirúrgica",        color: "bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/50" },
+            { type: "protesis_fija",      label: "Prótesis fija",               desc: "Coronas y puentes",            color: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50" },
+            { type: "protesis_removible", label: "Prótesis removible",          desc: "Parcial removible",            color: "bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50" },
+            { type: "periodoncia",        label: "Cirugía periodontal",         desc: "Tratamiento de encías",        color: "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50" },
+            { type: "cosmeticos",         label: "Procedimientos cosméticos",   desc: "Prácticas estéticas",          color: "bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50" },
+            { type: "biopsia",            label: "Biopsia",                     desc: "Toma de material",             color: "bg-fuchsia-50 dark:bg-fuchsia-950/40 border-fuchsia-200 dark:border-fuchsia-800 text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/50" },
+            { type: "odontopediatria",    label: "Odontopediatría",             desc: "Menores de edad",              color: "bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/50" },
+            { type: "ortodoncia",         label: "Ortodoncia",                  desc: "Ortodoncia / ortopedia",       color: "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50" },
           ];
           const profName = (report as any).professional_name ?? "";
           const fullNameForAdmision = report.patient.name + ((report.patient as any).last_name ? ` ${(report.patient as any).last_name}` : "");
@@ -1123,7 +1139,7 @@ export function PatientProfilePage() {
               <p className="text-xs text-muted-foreground">Cada PDF incluye: datos del paciente y profesional, descripción del procedimiento, riesgos, cuidados post-operatorios y espacio para firma.</p>
 
               <div className="pt-3 border-t">
-                <div className="flex items-center gap-3 p-4 rounded-2xl border bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100">
+                <div className="flex items-center gap-3 p-4 rounded-2xl border bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900/60">
                   <button
                     onClick={() => downloadAdmisionPdf(fullNameForAdmision)}
                     className="flex items-center gap-3 flex-1 text-left"
@@ -1188,7 +1204,7 @@ export function PatientProfilePage() {
                         onChange={e => setBudgetItems(items => items.map((it, j) => j === i ? { ...it, unit_price: parseFloat(e.target.value) || 0 } : it))}
                         className="border border-input bg-background px-2 py-2 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary" />
                       <button onClick={() => setBudgetItems(items => items.length > 1 ? items.filter((_, j) => j !== i) : items)}
-                        className="flex items-center justify-center h-9 w-9 rounded-xl border border-border/60 hover:bg-rose-50 hover:text-rose-500 transition-colors">
+                        className="flex items-center justify-center h-9 w-9 rounded-xl border border-border/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-500 transition-colors">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -1221,9 +1237,9 @@ export function PatientProfilePage() {
             ) : budgets.map(budget => {
               const total = budget.items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
               const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-                PENDING:  { label: "Pendiente", cls: "bg-amber-100 text-amber-700 border-amber-300" },
-                ACCEPTED: { label: "Aceptado",  cls: "bg-green-100 text-green-700 border-green-300" },
-                REJECTED: { label: "Rechazado", cls: "bg-rose-100 text-rose-700 border-rose-300" },
+                PENDING:  { label: "Pendiente", cls: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800" },
+                ACCEPTED: { label: "Aceptado",  cls: "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-green-300 dark:border-green-800" },
+                REJECTED: { label: "Rechazado", cls: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800" },
               };
               const st = STATUS_MAP[budget.status] ?? STATUS_MAP.PENDING;
               return (
@@ -1262,7 +1278,7 @@ export function PatientProfilePage() {
                         </button>
                       )}
                       <button onClick={() => { if (confirm("¿Eliminar presupuesto?")) deleteBudgetMutation.mutate(budget.id!); }}
-                        className="p-1.5 hover:bg-rose-50 hover:text-rose-500 rounded-lg" title="Eliminar">
+                        className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-500 rounded-lg" title="Eliminar">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -1336,8 +1352,8 @@ export function PatientProfilePage() {
       {ccModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm">
-            <div className={`flex items-center justify-between p-5 border-b ${ccModal.type === "trabajo" ? "bg-primary/5" : "bg-emerald-50"}`}>
-              <h3 className={`font-bold text-base ${ccModal.type === "trabajo" ? "text-primary" : "text-emerald-700"}`}>
+            <div className={`flex items-center justify-between p-5 border-b ${ccModal.type === "trabajo" ? "bg-primary/5" : "bg-emerald-50 dark:bg-emerald-950/40"}`}>
+              <h3 className={`font-bold text-base ${ccModal.type === "trabajo" ? "text-primary" : "text-emerald-700 dark:text-emerald-300"}`}>
                 {ccModal.type === "trabajo" ? "Ingresando Trabajo" : "Ingresando Pago"}
               </h3>
               <button onClick={() => setCcModal(null)} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">

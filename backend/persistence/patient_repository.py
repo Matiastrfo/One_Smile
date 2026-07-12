@@ -1,7 +1,7 @@
 from domain.patient import Patient
 from persistence.database import get_connection
 
-_COLS = "id, name, dni, phone, professional_id, blood_type, allergies, diseases, medications, observations, last_name, social_security, social_security_number, address, province, city, email, birth_date, photo_path, dentition_mode"
+_COLS = "id, name, dni, phone, professional_id, blood_type, allergies, diseases, medications, observations, last_name, social_security, social_security_number, address, province, city, email, birth_date, photo_path, dentition_mode, country"
 
 def _map(r) -> Patient:
     return Patient(
@@ -9,7 +9,7 @@ def _map(r) -> Patient:
         blood_type=r[5], allergies=r[6], diseases=r[7], medications=r[8], observations=r[9],
         last_name=r[10], social_security=r[11], social_security_number=r[12],
         address=r[13], province=r[14], city=r[15], email=r[16], birth_date=r[17], photo_path=r[18],
-        dentition_mode=r[19],
+        dentition_mode=r[19], country=r[20],
     )
 
 class PatientRepository:
@@ -55,13 +55,13 @@ class PatientRepository:
             """UPDATE patients SET
                 name=?, dni=?, phone=?, blood_type=?, allergies=?, diseases=?, medications=?, observations=?,
                 last_name=?, social_security=?, social_security_number=?, address=?, province=?, city=?,
-                email=?, birth_date=?, photo_path=?
+                email=?, birth_date=?, photo_path=?, country=?
                WHERE id=?""",
             (patient.name, patient.dni, patient.phone, patient.blood_type, patient.allergies,
              patient.diseases, patient.medications, patient.observations,
              patient.last_name, patient.social_security, patient.social_security_number,
              patient.address, patient.province, patient.city,
-             patient.email, patient.birth_date, patient.photo_path,
+             patient.email, patient.birth_date, patient.photo_path, patient.country,
              patient.id)
         )
         conn.commit()

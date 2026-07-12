@@ -6,6 +6,7 @@ export interface UserProfile {
   role: string;
   name: string;
   avatar_path?: string | null;
+  price_list_path?: string | null;
 }
 
 export const getMyProfile = async (): Promise<UserProfile> => {
@@ -22,6 +23,15 @@ export const uploadAvatar = async (file: File): Promise<UserProfile> => {
   const form = new FormData();
   form.append("file", file);
   const { data } = await api.post("/api/profile/avatar", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+
+export const uploadPriceList = async (file: File): Promise<UserProfile> => {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post("/api/profile/price-list", form, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
