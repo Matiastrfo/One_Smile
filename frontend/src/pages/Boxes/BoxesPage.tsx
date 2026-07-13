@@ -6,6 +6,8 @@ import { DAYS, DAY_LABELS } from "../../types";
 import { getBoxes, createBox, updateBox, deleteBox } from "../../api/boxApi";
 import { getActiveContracts, assignProfessional, removeContract, transferContract } from "../../api/contractApi";
 import api from "../../api/axios";
+import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 
 interface Professional { id: number; email: string; role: string; }
 
@@ -22,6 +24,8 @@ const SHIFTS = [
 
 export function BoxesPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirmDialog = useConfirm();
 
   // Box form
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -57,33 +61,33 @@ export function BoxesPage() {
   const createMutation = useMutation({
     mutationFn: createBox,
     onSuccess: () => { invalidate(); resetBoxForm(); },
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al crear box"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al crear box"),
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, box }: { id: number; box: Box }) => updateBox(id, box),
     onSuccess: () => { invalidate(); resetBoxForm(); },
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al actualizar box"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al actualizar box"),
   });
   const deleteMutation = useMutation({
     mutationFn: deleteBox,
     onSuccess: invalidate,
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al eliminar box"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al eliminar box"),
   });
   const assignMutation = useMutation({
     mutationFn: assignProfessional,
     onSuccess: () => { invalidate(); setAssignState(null); setAssignProfId(""); setAssignDuration(6); },
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al asignar"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al asignar"),
   });
   const removeMutation = useMutation({
     mutationFn: removeContract,
     onSuccess: invalidate,
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al eliminar asignación"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al eliminar asignación"),
   });
   const transferMutation = useMutation({
     mutationFn: ({ contractId, newBoxId, newShift, newDay, swap }: { contractId: number; newBoxId: number; newShift: string; newDay: DayOfWeek; swap: boolean }) =>
       transferContract(contractId, newBoxId, newShift, newDay, swap),
     onSuccess: () => { invalidate(); setTransferState(null); setTargetBoxId(""); setDoSwap(false); },
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al transferir"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al transferir"),
   });
 
   const resetBoxForm = () => { setIsFormOpen(false); setEditingBox(null); setBoxName(""); };
@@ -155,7 +159,7 @@ export function BoxesPage() {
                 </h3>
                 <div className="flex gap-1">
                   <button onClick={() => { setEditingBox(box); setBoxName(box.name); setIsFormOpen(true); }} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => { if (window.confirm(`¿Eliminar ${box.name}? Se perderán todos sus contratos.`)) deleteMutation.mutate(box.id!); }} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={async () => { if (await confirmDialog({ message: `¿Eliminar ${box.name}? Se perderán todos sus contratos.`, confirmLabel: "Eliminar", danger: true })) deleteMutation.mutate(box.id!); }} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
 
@@ -189,7 +193,7 @@ export function BoxesPage() {
                                       title="Transferir"
                                     ><ArrowRightLeft className="h-3.5 w-3.5" /></button>
                                     <button
-                                      onClick={() => { if (window.confirm(`¿Quitar a ${contract.professional_email} de este slot?`)) removeMutation.mutate(contract.id); }}
+                                      onClick={async () => { if (await confirmDialog({ message: `¿Quitar a ${contract.professional_email} de este slot?`, confirmLabel: "Quitar", danger: true })) removeMutation.mutate(contract.id); }}
                                       className="p-1.5 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
                                       title="Quitar"
                                     ><X className="h-3.5 w-3.5" /></button>

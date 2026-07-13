@@ -4,9 +4,13 @@ import { CreditCard, CheckCircle2, Clock, XCircle, Calendar, RefreshCcw, Downloa
 import { getPayments, generateMonthlyPayments, deletePayment } from "../../api/paymentApi";
 import type { BoxPayment } from "../../types";
 import { PaymentModal } from "./PaymentModal";
+import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 
 export function PaymentsPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirmDialog = useConfirm();
   const [selectedPayment, setSelectedPayment] = useState<BoxPayment | null>(null);
   const [activeTab, setActiveTab] = useState<'mensual' | 'profesional'>('mensual');
   const [selectedMonthToGenerate, setSelectedMonthToGenerate] = useState<string>(new Date().toISOString().slice(0, 7));
@@ -20,17 +24,17 @@ export function PaymentsPage() {
     mutationFn: (monthYear: string) => generateMonthlyPayments(monthYear),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-      alert(`Ciclo generado: Se crearon ${data.generated_count} pagos para el mes ${data.month_year}.`);
+      toast.success(`Ciclo generado: Se crearon ${data.generated_count} pagos para el mes ${data.month_year}.`);
     },
     onError: () => {
-      alert("Error al generar el ciclo de pagos.");
+      toast.error("Error al generar el ciclo de pagos.");
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deletePayment(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payments"] }),
-    onError: () => alert("Error al eliminar el pago."),
+    onError: () => toast.error("Error al eliminar el pago."),
   });
 
   // Agrupamos por mes para facilitar la vista
@@ -324,7 +328,7 @@ export function PaymentsPage() {
                                       Actualizar
                                     </button>
                                     <button
-                                      onClick={() => { if (window.confirm(`¿Eliminar el pago de ${payment.professional_email} (${payment.month_year})?`)) deleteMutation.mutate(payment.id!); }}
+                                      onClick={async () => { if (await confirmDialog({ message: `¿Eliminar el pago de ${payment.professional_email} (${payment.month_year})?`, confirmLabel: "Eliminar", danger: true })) deleteMutation.mutate(payment.id!); }}
                                       className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors"
                                       title="Eliminar"
                                     >

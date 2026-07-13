@@ -2,8 +2,12 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Mail, Eye, EyeOff, MessageCircle } from "lucide-react";
 import api from "../../api/axios";
+import { useToast } from "../../context/ToastContext";
+
+const MASKED_PASSWORD = "••••••••";
 
 export function EmailRemindersPage() {
+  const toast = useToast();
   const [showEmailPass, setShowEmailPass] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState("");
   const [emailForm, setEmailForm] = useState({ smtp_host: "smtp.gmail.com", smtp_port: 587, smtp_user: "", smtp_password: "", from_name: "OneSmile Odontología", enabled: false, whatsapp_number: "" });
@@ -15,20 +19,27 @@ export function EmailRemindersPage() {
 
   useEffect(() => {
     if (emailConfig) {
-      setEmailForm(prev => ({ ...prev, ...emailConfig, smtp_password: "" }));
+      // El backend devuelve la contraseña enmascarada (••••••••) si hay una guardada, o
+      // vacío si no. Mostramos esa máscara tal cual en vez de forzar el campo a vacío —
+      // así el usuario ve que hay una contraseña cargada sin que se la mandemos de vuelta
+      // sin querer (ver saveEmailMutation, que la reemplaza por "" si no la tocó).
+      setEmailForm(prev => ({ ...prev, ...emailConfig, smtp_password: emailConfig.smtp_password || "" }));
     }
   }, [emailConfig]);
 
   const saveEmailMutation = useMutation({
-    mutationFn: async () => { await api.put("/api/email/config", emailForm); },
-    onSuccess: () => alert("✅ Configuración de email guardada"),
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al guardar"),
+    mutationFn: async () => {
+      const body = { ...emailForm, smtp_password: emailForm.smtp_password === MASKED_PASSWORD ? "" : emailForm.smtp_password };
+      await api.put("/api/email/config", body);
+    },
+    onSuccess: () => toast.success("Configuración de email guardada"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al guardar"),
   });
 
   const testEmailMutation = useMutation({
     mutationFn: async () => { await api.post("/api/email/test", { to: testEmailTo }); },
-    onSuccess: () => alert("✅ Email de prueba enviado correctamente"),
-    onError: (err: any) => alert(err.response?.data?.detail || "No se pudo enviar"),
+    onSuccess: () => toast.success("Email de prueba enviado correctamente"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "No se pudo enviar"),
   });
 
   return (
@@ -87,9 +98,15 @@ export function EmailRemindersPage() {
               </div>
             ))}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Contraseña / App Password</label>
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                Contraseña / App Password
+                {emailForm.smtp_password === MASKED_PASSWORD && (
+                  <span className="text-[10px] font-normal text-green-600 dark:text-green-400">✓ Guardada — tocá para cambiarla</span>
+                )}
+              </label>
               <div className="relative">
                 <input type={showEmailPass ? "text" : "password"} value={emailForm.smtp_password} placeholder="••••••••••••"
+                  onFocus={() => { if (emailForm.smtp_password === MASKED_PASSWORD) setEmailForm(prev => ({ ...prev, smtp_password: "" })); }}
                   onChange={e => setEmailForm(prev => ({ ...prev, smtp_password: e.target.value }))}
                   className="w-full border border-input bg-background px-3 py-2 pr-10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
                 <button onClick={() => setShowEmailPass(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">

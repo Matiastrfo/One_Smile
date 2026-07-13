@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { HardDrive, RotateCcw, FolderOpen } from "lucide-react";
 import { getBackupConfig, saveBackupConfig, runBackupNow, listBackups } from "../../api/backupApi";
+import { useToast } from "../../context/ToastContext";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -14,6 +15,7 @@ function formatDate(iso: string): string {
 
 export function BackupsPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [form, setForm] = useState({ destination_path: "", enabled: true, keep_count: 30 });
 
   const { data: config } = useQuery({ queryKey: ["backupConfig"], queryFn: getBackupConfig });
@@ -36,14 +38,14 @@ export function BackupsPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => saveBackupConfig(form),
-    onSuccess: () => { invalidate(); alert("Configuración de backups guardada"); },
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al guardar"),
+    onSuccess: () => { invalidate(); toast.success("Configuración de backups guardada"); },
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al guardar"),
   });
 
   const runMutation = useMutation({
     mutationFn: runBackupNow,
-    onSuccess: () => { invalidate(); alert("Backup creado correctamente"); },
-    onError: (err: any) => alert(err.response?.data?.detail || "No se pudo crear el backup"),
+    onSuccess: () => { invalidate(); toast.success("Backup creado correctamente"); },
+    onError: (err: any) => toast.error(err.response?.data?.detail || "No se pudo crear el backup"),
   });
 
   return (

@@ -15,6 +15,8 @@ import { BackupsPage } from "./pages/Backups/BackupsPage";
 import { EmailRemindersPage } from "./pages/Reminders/EmailRemindersPage";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { ToastProvider } from "./context/ToastContext";
+import { ConfirmProvider } from "./context/ConfirmContext";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -22,6 +24,8 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <ThemeProvider>
+    <ToastProvider>
+    <ConfirmProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <HashRouter>
@@ -53,6 +57,8 @@ function App() {
         </HashRouter>
       </AuthProvider>
     </QueryClientProvider>
+    </ConfirmProvider>
+    </ToastProvider>
     </ThemeProvider>
   );
 }

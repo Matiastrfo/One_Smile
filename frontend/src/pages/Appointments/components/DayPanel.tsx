@@ -7,6 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { downloadAppointmentPdf } from "../../../utils/appointmentPdf";
 import { useAuth } from "../../../context/AuthContext";
 import logoUrl from "../../../assets/logo.png";
+import { useToast } from "../../../context/ToastContext";
 
 interface DayPanelProps {
   date: Date;
@@ -32,6 +33,7 @@ const STATUS_CONFIG = {
 
 export function DayPanel({ date, appointments, getPatientName, getPatientEmail, onAdd, onDelete, onStatusChange, professionalName }: DayPanelProps) {
   const { user } = useAuth();
+  const toast = useToast();
   const sorted = [...appointments].sort((a, b) => a.date_time.localeCompare(b.date_time));
 
   const [notesModal, setNotesModal] = useState<{ apptId: number; status: string; notes: string } | null>(null);
@@ -40,7 +42,7 @@ export function DayPanel({ date, appointments, getPatientName, getPatientEmail, 
 
   const sendReminder = async (appt: Appointment) => {
     const email = getPatientEmail?.(appt.patient_id);
-    if (!email) { alert("Este paciente no tiene email cargado en sus datos filiatorios."); return; }
+    if (!email) { toast.error("Este paciente no tiene email cargado en sus datos filiatorios."); return; }
     setSendingReminder(appt.id!);
     try {
       await api.post("/api/email/reminder", {
@@ -50,9 +52,9 @@ export function DayPanel({ date, appointments, getPatientName, getPatientEmail, 
         professional_name: professionalName ?? user?.name ?? user?.email ?? "",
         reason: appt.reason ?? "",
       });
-      alert("Recordatorio enviado correctamente");
+      toast.success("Recordatorio enviado correctamente");
     } catch (e: any) {
-      alert(e.response?.data?.detail || "Error al enviar el recordatorio.");
+      toast.error(e.response?.data?.detail || "Error al enviar el recordatorio.");
     } finally {
       setSendingReminder(null);
     }

@@ -26,7 +26,9 @@ def update_config(body: BackupConfigUpdate, current_user: User = Depends(require
 
 @router.post("/run")
 def trigger_backup(current_user: User = Depends(require_admin)):
-    result = run_backup()
+    # "Hacer backup ahora" es un disparo manual explícito — debe funcionar aunque el
+    # usuario todavía no haya activado los backups automáticos programados.
+    result = run_backup(force=True)
     if result.get("skipped"):
         raise HTTPException(status_code=400, detail=result.get("reason", "Backup desactivado"))
     return {"message": "Backup creado correctamente", "path": result["path"]}

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DollarSign, X, FileText, Upload } from "lucide-react";
 import { getMyProfile, uploadPriceList } from "../../api/profileApi";
+import { useToast } from "../../context/ToastContext";
 
 interface PriceListModalProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export function PriceListModal({ onClose }: PriceListModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -28,7 +30,7 @@ export function PriceListModal({ onClose }: PriceListModalProps) {
     },
     onError: (err: any) => {
       setUploading(false);
-      alert(err.response?.data?.detail || "No se pudo subir el PDF");
+      toast.error(err.response?.data?.detail || "No se pudo subir el PDF");
     },
   });
 

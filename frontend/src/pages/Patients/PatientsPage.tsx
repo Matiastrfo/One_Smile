@@ -9,10 +9,12 @@ import { getPatients, createPatient, updatePatient, deletePatient } from "../../
 import { Link } from "react-router-dom";
 import type { Patient } from "../../types";
 import { useAuth } from "../../context/AuthContext";
+import { useConfirm } from "../../context/ConfirmContext";
 
 export function PatientsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const confirmDialog = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   
@@ -178,9 +180,9 @@ export function PatientsPage() {
                         <Pencil className="h-4 w-4" />
                       </button>
                       {user?.role === 'admin' && (
-                        <button 
-                          onClick={() => {
-                            if (window.confirm("¿Seguro que deseas eliminar este paciente?")) {
+                        <button
+                          onClick={async () => {
+                            if (await confirmDialog({ message: "¿Seguro que deseas eliminar este paciente?", confirmLabel: "Eliminar", danger: true })) {
                               deleteMutation.mutate(p.id!);
                             }
                           }}

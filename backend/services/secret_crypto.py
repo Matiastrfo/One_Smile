@@ -2,12 +2,17 @@ import os
 import base64
 import hashlib
 from cryptography.fernet import Fernet, InvalidToken
+from persistence.database import DB_NAME
 
 
 def _load_key() -> bytes:
     raw = os.getenv("SECRET_ENCRYPTION_KEY", "")
     if not raw:
-        path = os.path.join(os.path.dirname(__file__), "..", ".secret_key")
+        # Guardar la clave junto a la base de datos (ruta estable en AppData vía DB_PATH),
+        # NO relativa a __file__: en el .exe empaquetado con PyInstaller, __file__ apunta a
+        # una carpeta temporal de extracción que Windows borra en cada reinicio, generando
+        # una clave nueva cada vez y volviendo indescifrables las contraseñas ya guardadas.
+        path = os.path.join(os.path.dirname(os.path.abspath(DB_NAME)), ".secret_key")
         if os.path.exists(path):
             with open(path) as f:
                 raw = f.read().strip()

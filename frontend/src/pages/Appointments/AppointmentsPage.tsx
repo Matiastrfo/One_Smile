@@ -11,6 +11,8 @@ import { DayPanel } from "./components/DayPanel";
 import { QuickAppointmentModal } from "./components/QuickAppointmentModal";
 import { ScheduleConfigModal } from "./components/ScheduleConfigModal";
 import { SlotPickerModal } from "./components/SlotPickerModal";
+import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const DAY_MAP: Record<number, string> = {
   0: "SUNDAY", 1: "MONDAY", 2: "TUESDAY", 3: "WEDNESDAY",
@@ -20,6 +22,8 @@ const DAY_MAP: Record<number, string> = {
 export function AppointmentsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirmDialog = useConfirm();
   const location = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [showQuickModal, setShowQuickModal] = useState(false);
@@ -59,13 +63,13 @@ export function AppointmentsPage() {
     mutationFn: (body: { patient_id: number; date_time: string; reason: string }) =>
       createAppointment({ patient_id: body.patient_id, date_time: body.date_time, reason: body.reason } as any),
     onSuccess: () => { invalidate(); setShowQuickModal(false); },
-    onError: (error: any) => alert(error.response?.data?.detail || "Error al agendar"),
+    onError: (error: any) => toast.error(error.response?.data?.detail || "Error al agendar"),
   });
 
   const quickMutation = useMutation({
     mutationFn: quickCreateAppointment,
     onSuccess: () => { invalidate(); setShowQuickModal(false); },
-    onError: (error: any) => alert(error.response?.data?.detail || "Error al agendar"),
+    onError: (error: any) => toast.error(error.response?.data?.detail || "Error al agendar"),
   });
 
   const configMutation = useMutation({
@@ -74,7 +78,7 @@ export function AppointmentsPage() {
       queryClient.invalidateQueries({ queryKey: ["scheduleConfig"] });
       setShowConfigModal(false);
     },
-    onError: () => alert("Error al guardar la configuración"),
+    onError: () => toast.error("Error al guardar la configuración"),
   });
 
   const deleteMutation = useMutation({
@@ -85,7 +89,7 @@ export function AppointmentsPage() {
   const statusMutation = useMutation({
     mutationFn: ({ id, status, notes }: { id: number; status: string; notes?: string }) => updateAppointmentStatus(id, status, notes),
     onSuccess: invalidate,
-    onError: () => alert("Error al actualizar el estado"),
+    onError: () => toast.error("Error al actualizar el estado"),
   });
 
   const getPatientName = (id: number) => {
@@ -98,8 +102,8 @@ export function AppointmentsPage() {
     return p?.email ?? "";
   };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm("¿Cancelar este turno?")) deleteMutation.mutate(id);
+  const handleDelete = async (id: number) => {
+    if (await confirmDialog({ message: "¿Cancelar este turno?", confirmLabel: "Cancelar turno", danger: true })) deleteMutation.mutate(id);
   };
 
   const apptsBySelectedDay = selectedDate

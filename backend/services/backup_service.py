@@ -58,9 +58,9 @@ def list_backups() -> list[dict]:
     return backups
 
 
-def run_backup() -> dict:
+def run_backup(force: bool = False) -> dict:
     config = get_backup_config()
-    if not config["enabled"]:
+    if not config["enabled"] and not force:
         return {"skipped": True, "reason": "Los backups automáticos están desactivados"}
 
     folder = config["destination_path"]

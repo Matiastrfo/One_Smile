@@ -16,6 +16,8 @@ import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentCol
 import Odontogram, { type DentitionMode, toChildNumber } from "../../components/Odontogram/Odontogram";
 import { PriceListModal } from "../../components/Odontogram/PriceListModal";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../../components/ui/select";
+import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const COUNTRIES = ["Argentina", "Uruguay", "Chile", "Paraguay", "Bolivia", "Brasil", "Perú", "Colombia", "Venezuela", "Ecuador", "México", "España", "Estados Unidos", "Otro"];
 
@@ -23,6 +25,8 @@ export function PatientProfilePage() {
   const { id } = useParams<{ id: string }>();
   const patientId = parseInt(id || "0");
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirmDialog = useConfirm();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -146,7 +150,7 @@ export function PatientProfilePage() {
         autoAddTreatment(toothNumber, update.treatment_type, { color: update.color, faces: update.faces }, dentition);
       }
     },
-    onError: () => alert("Error al guardar el cambio en el odontograma"),
+    onError: () => toast.error("Error al guardar el cambio en el odontograma"),
   });
 
   const archMutation = useMutation({
@@ -176,7 +180,7 @@ export function PatientProfilePage() {
           .catch(() => {});
       }
     },
-    onError: () => alert("Error al guardar el cambio en el odontograma"),
+    onError: () => toast.error("Error al guardar el cambio en el odontograma"),
   });
 
   const { data: report, isLoading } = useQuery<PatientReport>({
@@ -186,7 +190,7 @@ export function PatientProfilePage() {
 
   const dentitionModeMutation = useMutation({
     mutationFn: (mode: DentitionMode) => updateDentitionMode(patientId, mode),
-    onError: () => alert("Error al guardar el tipo de odontograma"),
+    onError: () => toast.error("Error al guardar el tipo de odontograma"),
   });
 
   const handleDentitionModeChange = (mode: DentitionMode) => {
@@ -220,24 +224,35 @@ export function PatientProfilePage() {
         birth_date: p.birth_date ?? "",
       });
     }
-  }, [report?.patient]);
+    // Solo re-sincroniza cuando cambia de paciente (navegación), no en cada refetch del
+    // mismo paciente (ej: subir una foto invalida ["patientReport"] y trae un objeto
+    // `patient` con nueva referencia aunque el resto de los campos no cambió) — si
+    // dependiéramos del objeto completo, cualquier mutación no relacionada pisaría lo
+    // que el usuario esté escribiendo en Datos Filiatorios / Historia Clínica.
+  }, [report?.patient.id]);
 
   const medicalHistoryMutation = useMutation({
     mutationFn: () => updatePatient(patientId, { ...(report!.patient as any), ...medicalHistory }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }),
-    onError: () => alert("Error al guardar la historia clínica"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] });
+      toast.success("Historia clínica guardada");
+    },
+    onError: () => toast.error("Error al guardar la historia clínica"),
   });
 
   const filiatoryMutation = useMutation({
     mutationFn: () => updatePatient(patientId, { ...(report!.patient as any), ...filiatorio }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }),
-    onError: () => alert("Error al guardar los datos filiatorios"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] });
+      toast.success("Datos filiatorios guardados");
+    },
+    onError: () => toast.error("Error al guardar los datos filiatorios"),
   });
 
   const photoMutation = useMutation({
     mutationFn: (file: File) => uploadPatientPhoto(patientId, file),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] }),
-    onError: () => alert("Error al subir la foto"),
+    onError: () => toast.error("Error al subir la foto"),
   });
 
   const startCamera = async () => {
@@ -247,7 +262,7 @@ export function PatientProfilePage() {
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch {
-      alert("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
+      toast.error("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
       setShowCamera(false);
     }
   };
@@ -308,7 +323,7 @@ export function PatientProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] });
       queryClient.invalidateQueries({ queryKey: ["odontogram", patientId] });
     },
-    onError: () => alert("Error al eliminar el tratamiento"),
+    onError: () => toast.error("Error al eliminar el tratamiento"),
   });
 
   const treatmentMutation = useMutation({
@@ -323,7 +338,7 @@ export function PatientProfilePage() {
       closeTreatmentModal();
     },
     onError: (error: any) => {
-      alert("Error al guardar el tratamiento: " + (error.response?.data?.detail || error.message));
+      toast.error("Error al guardar el tratamiento: " + (error.response?.data?.detail || error.message));
     }
   });
 
@@ -347,7 +362,7 @@ export function PatientProfilePage() {
       setCcModal(null);
       setCcForm({ date: new Date().toISOString().split("T")[0], detail: "", amount: "" });
     },
-    onError: () => alert("Error al guardar el movimiento"),
+    onError: () => toast.error("Error al guardar el movimiento"),
   });
 
   const deleteEntryMutation = useMutation({
@@ -372,7 +387,7 @@ export function PatientProfilePage() {
       setBudgetNotes("");
       setShowBudgetForm(false);
     },
-    onError: () => alert("Error al guardar el presupuesto"),
+    onError: () => toast.error("Error al guardar el presupuesto"),
   });
 
   const deleteBudgetMutation = useMutation({
@@ -394,7 +409,7 @@ export function PatientProfilePage() {
   const uploadImageMutation = useMutation({
     mutationFn: (file: File) => uploadPatientImage(patientId, file, imgUploadForm.treatment_type, imgUploadForm.description),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientImages", patientId] }),
-    onError: () => alert("Error al subir la imagen"),
+    onError: () => toast.error("Error al subir la imagen"),
   });
 
   const deleteImageMutation = useMutation({
@@ -756,7 +771,7 @@ export function PatientProfilePage() {
                                     <p className="text-[10px] text-muted-foreground px-2 pt-1 truncate">{img.description}</p>
                                   )}
                                   <button
-                                    onClick={() => { if (confirm("¿Eliminar esta imagen?")) deleteImageMutation.mutate(img.id!); }}
+                                    onClick={async () => { if (await confirmDialog({ message: "¿Eliminar esta imagen?", confirmLabel: "Eliminar", danger: true })) deleteImageMutation.mutate(img.id!); }}
                                     className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                                   >
                                     <Trash2 className="h-3 w-3" /> Eliminar
@@ -799,7 +814,7 @@ export function PatientProfilePage() {
                           </div>
                           {img.description && <p className="text-[10px] text-muted-foreground px-2 pt-1 truncate">{img.description}</p>}
                           <button
-                            onClick={() => { if (confirm("¿Eliminar este scanner?")) deleteImageMutation.mutate(img.id!); }}
+                            onClick={async () => { if (await confirmDialog({ message: "¿Eliminar este scanner?", confirmLabel: "Eliminar", danger: true })) deleteImageMutation.mutate(img.id!); }}
                             className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                           >
                             <Trash2 className="h-3 w-3" /> Eliminar
@@ -834,8 +849,8 @@ export function PatientProfilePage() {
                     try {
                       const b64 = getTreatmentsPdfBase64(report.patient.name, report.treatments);
                       await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: report.patient.name, subject: `Historial de tratamientos - ${report.patient.name}`, docType: "tratamientos", pdfBase64: b64, filename: `tratamientos_${report.patient.name}.pdf` });
-                      alert("✅ Email enviado correctamente");
-                    } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
+                      toast.success("Email enviado correctamente");
+                    } catch (e: any) { toast.error(e.response?.data?.detail || "Error al enviar el email"); }
                     finally { setSendingEmail(false); }
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border/60 bg-muted/40 hover:bg-muted transition-colors disabled:opacity-50"
@@ -881,7 +896,7 @@ export function PatientProfilePage() {
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => { if (confirm("¿Eliminár este tratamiento?")) deleteTreatmentMutation.mutate(t.id!) }}
+                            onClick={async () => { if (await confirmDialog({ message: "¿Eliminár este tratamiento?", confirmLabel: "Eliminar", danger: true })) deleteTreatmentMutation.mutate(t.id!) }}
                             className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
                             title="Eliminar tratamiento"
                           >
@@ -1032,7 +1047,7 @@ export function PatientProfilePage() {
                           {fmt(Math.abs(row.saldo))}{row.saldo < 0 ? " ↑" : ""}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button onClick={() => { if (confirm("¿Eliminar este movimiento?")) deleteEntryMutation.mutate(row.id!); }}
+                          <button onClick={async () => { if (await confirmDialog({ message: "¿Eliminar este movimiento?", confirmLabel: "Eliminar", danger: true })) deleteEntryMutation.mutate(row.id!); }}
                             className="p-1 rounded text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -1123,8 +1138,8 @@ export function PatientProfilePage() {
                             try {
                               const b64 = getConsentPdfBase64(fullName, report.patient.dni ?? "", profName, c.type, consentTooth || undefined, consentProcedureDetail || undefined);
                               await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: fullName, subject: `Consentimiento informado - ${c.label}`, docType: "consentimiento", pdfBase64: b64, filename: `consentimiento_${c.type}_${fullName}.pdf` });
-                              alert("✅ Email enviado correctamente");
-                            } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
+                              toast.success("Email enviado correctamente");
+                            } catch (e: any) { toast.error(e.response?.data?.detail || "Error al enviar el email"); }
                             finally { setSendingEmail(false); }
                           }}
                           className="p-1.5 rounded-lg bg-white/70 hover:bg-white transition-colors disabled:opacity-50 shrink-0">
@@ -1159,8 +1174,8 @@ export function PatientProfilePage() {
                         try {
                           const b64 = getAdmisionPdfBase64(fullNameForAdmision);
                           await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: fullNameForAdmision, subject: `Ficha de Admisión`, docType: "consentimiento", pdfBase64: b64, filename: `admision_${fullNameForAdmision}.pdf` });
-                          alert("✅ Email enviado correctamente");
-                        } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
+                          toast.success("Email enviado correctamente");
+                        } catch (e: any) { toast.error(e.response?.data?.detail || "Error al enviar el email"); }
                         finally { setSendingEmail(false); }
                       }}
                       className="p-1.5 rounded-lg bg-white/70 hover:bg-white transition-colors disabled:opacity-50 shrink-0">
@@ -1269,15 +1284,15 @@ export function PatientProfilePage() {
                             try {
                               const b64 = getBudgetPdfBase64(report.patient.name, budget, budget.professional_name ?? "");
                               await sendDocumentByEmail({ toEmail: (report.patient as any).email, patientName: report.patient.name, subject: `Presupuesto - ${report.patient.name}`, docType: "presupuesto", pdfBase64: b64, filename: `presupuesto_${report.patient.name}.pdf` });
-                              alert("✅ Email enviado correctamente");
-                            } catch (e: any) { alert(e.response?.data?.detail || "Error al enviar el email"); }
+                              toast.success("Email enviado correctamente");
+                            } catch (e: any) { toast.error(e.response?.data?.detail || "Error al enviar el email"); }
                             finally { setSendingEmail(false); }
                           }}
                           className="p-1.5 hover:bg-accent rounded-lg text-blue-500 disabled:opacity-50">
                           <Mail className="h-4 w-4" />
                         </button>
                       )}
-                      <button onClick={() => { if (confirm("¿Eliminar presupuesto?")) deleteBudgetMutation.mutate(budget.id!); }}
+                      <button onClick={async () => { if (await confirmDialog({ message: "¿Eliminar presupuesto?", confirmLabel: "Eliminar", danger: true })) deleteBudgetMutation.mutate(budget.id!); }}
                         className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-500 rounded-lg" title="Eliminar">
                         <Trash2 className="h-4 w-4" />
                       </button>

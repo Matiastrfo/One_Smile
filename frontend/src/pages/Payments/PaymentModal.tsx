@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { updatePayment } from "../../api/paymentApi";
 import type { BoxPayment } from "../../types";
+import { useToast } from "../../context/ToastContext";
 
 interface PaymentModalProps {
   payment: BoxPayment;
@@ -11,6 +12,7 @@ interface PaymentModalProps {
 
 export function PaymentModal({ payment, onClose }: PaymentModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [status, setStatus] = useState<"PENDING" | "IN_PROGRESS" | "PAID">(payment.status);
   const [amount, setAmount] = useState<string>(payment.amount ? payment.amount.toString() : "");
   const [paymentDate, setPaymentDate] = useState<string>(payment.payment_date || new Date().toISOString().split('T')[0]);
@@ -23,7 +25,7 @@ export function PaymentModal({ payment, onClose }: PaymentModalProps) {
       onClose();
     },
     onError: () => {
-      alert("Error al actualizar el pago");
+      toast.error("Error al actualizar el pago");
     }
   });
 

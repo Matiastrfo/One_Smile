@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FlaskConical, Plus, Phone, Mail, FileText, Upload, X, Check, Trash2, Pencil, Filter, ListChecks } from "lucide-react";
 import { getLabs, createLab, updateLab, deleteLab, uploadPriceList, getLabJobs, createLabJob, markJobReceived, deleteLabJob, type Lab, type LabJob } from "../../api/labApi";
 import { getPatients } from "../../api/patientApi";
+import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -21,6 +23,8 @@ function StatusBadge({ status }: { status: "SENT" | "RECEIVED" }) {
 
 export function LabsPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirmDialog = useConfirm();
   const location = useLocation();
   const navState = location.state as { patientId?: number; patientName?: string } | null;
   const [showLabModal, setShowLabModal] = useState(false);
@@ -41,7 +45,7 @@ export function LabsPage() {
   const deleteLabMutation = useMutation({
     mutationFn: deleteLab,
     onSuccess: invalidateLabs,
-    onError: (err: any) => alert(err.response?.data?.detail || "No se pudo eliminar el laboratorio"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "No se pudo eliminar el laboratorio"),
   });
 
   const receiveMutation = useMutation({
@@ -102,7 +106,7 @@ export function LabsPage() {
                   className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Editar">
                   <Pencil className="h-4 w-4" />
                 </button>
-                <button onClick={() => { if (window.confirm(`¿Eliminar el laboratorio ${lab.name}?`)) deleteLabMutation.mutate(lab.id); }}
+                <button onClick={async () => { if (await confirmDialog({ message: `¿Eliminar el laboratorio ${lab.name}?`, confirmLabel: "Eliminar", danger: true })) deleteLabMutation.mutate(lab.id); }}
                   className="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg transition-colors" title="Eliminar">
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -161,6 +165,7 @@ export function LabsPage() {
 }
 
 function JobRow({ job, showLabName, onReceive, onDelete }: { job: LabJob; showLabName?: boolean; onReceive: () => void; onDelete: () => void }) {
+  const confirmDialog = useConfirm();
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border border-border/40 bg-muted/20 rounded-xl">
       <div>
@@ -178,7 +183,7 @@ function JobRow({ job, showLabName, onReceive, onDelete }: { job: LabJob; showLa
             <Check className="h-4 w-4" />
           </button>
         )}
-        <button onClick={() => { if (window.confirm("¿Eliminar este trabajo?")) onDelete(); }}
+        <button onClick={async () => { if (await confirmDialog({ message: "¿Eliminar este trabajo?", confirmLabel: "Eliminar", danger: true })) onDelete(); }}
           className="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg transition-colors" title="Eliminar">
           <Trash2 className="h-4 w-4" />
         </button>
@@ -212,13 +217,14 @@ function LabJobsModal({ lab, jobs, onClose, onReceive, onDelete }: { lab: Lab; j
 }
 
 function PriceListControl({ lab, onUploaded }: { lab: Lab; onUploaded: () => void }) {
+  const toast = useToast();
   const [uploading, setUploading] = useState(false);
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadPriceList(lab.id, file),
     onMutate: () => setUploading(true),
     onSuccess: () => { setUploading(false); onUploaded(); },
-    onError: (err: any) => { setUploading(false); alert(err.response?.data?.detail || "No se pudo subir la lista de precios"); },
+    onError: (err: any) => { setUploading(false); toast.error(err.response?.data?.detail || "No se pudo subir la lista de precios"); },
   });
 
   return (
@@ -241,6 +247,7 @@ function PriceListControl({ lab, onUploaded }: { lab: Lab; onUploaded: () => voi
 }
 
 function LabModal({ lab, onClose, onSaved }: { lab: Lab | null; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
   const [name, setName] = useState(lab?.name ?? "");
   const [phone, setPhone] = useState(lab?.phone ?? "");
   const [email, setEmail] = useState(lab?.email ?? "");
@@ -248,7 +255,7 @@ function LabModal({ lab, onClose, onSaved }: { lab: Lab | null; onClose: () => v
   const saveMutation = useMutation({
     mutationFn: () => lab ? updateLab(lab.id, { name, phone, email }) : createLab({ name, phone, email }),
     onSuccess: onSaved,
-    onError: (err: any) => alert(err.response?.data?.detail || "No se pudo guardar el laboratorio"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "No se pudo guardar el laboratorio"),
   });
 
   return (
@@ -296,6 +303,7 @@ function LabModal({ lab, onClose, onSaved }: { lab: Lab | null; onClose: () => v
 }
 
 function JobModal({ labs, defaultPatientId, onClose, onSaved }: { labs: Lab[]; defaultPatientId?: number; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
   const [labId, setLabId] = useState(labs[0]?.id ?? 0);
   const [patientId, setPatientId] = useState(defaultPatientId ?? 0);
   const [description, setDescription] = useState("");
@@ -306,7 +314,7 @@ function JobModal({ labs, defaultPatientId, onClose, onSaved }: { labs: Lab[]; d
   const saveMutation = useMutation({
     mutationFn: () => createLabJob({ lab_id: labId, patient_id: patientId, description, notes: notes || undefined }),
     onSuccess: onSaved,
-    onError: (err: any) => alert(err.response?.data?.detail || "No se pudo registrar el trabajo"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "No se pudo registrar el trabajo"),
   });
 
   return (

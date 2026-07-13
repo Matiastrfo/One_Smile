@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, CalendarPlus } from "lucide-react";
 import type { Patient } from "../../../types";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../../../components/ui/select";
+import { useToast } from "../../../context/ToastContext";
 
 interface CreateAppointmentModalProps {
   isOpen: boolean;
@@ -12,7 +13,8 @@ interface CreateAppointmentModalProps {
 }
 
 export function CreateAppointmentModal({ isOpen, onClose, onSubmit, patients, isPending }: CreateAppointmentModalProps) {
-  const [formData, setFormData] = useState({ 
+  const toast = useToast();
+  const [formData, setFormData] = useState({
     patient_id: "", 
     date: "", 
     time: "", 
@@ -24,7 +26,7 @@ export function CreateAppointmentModal({ isOpen, onClose, onSubmit, patients, is
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.patient_id || !formData.date || !formData.time) {
-      alert("Por favor completa los campos obligatorios");
+      toast.error("Por favor completa los campos obligatorios");
       return;
     }
     

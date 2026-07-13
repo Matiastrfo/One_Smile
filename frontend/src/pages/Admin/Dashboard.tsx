@@ -5,11 +5,15 @@ import { ShieldAlert, Trash2, UserPlus, Users, Package, Pencil, X } from "lucide
 import api from "../../api/axios";
 import { getBoxes } from "../../api/boxApi";
 import type { Box } from "../../types";
+import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 
 interface Professional { id: number; email: string; role: string; name: string; }
 
 export function AdminDashboard() {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirmDialog = useConfirm();
   const { user: currentUser } = useAuth();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -36,24 +40,24 @@ export function AdminDashboard() {
 
   const createMutation = useMutation({
     mutationFn: async () => { const { data } = await api.post("/api/admin/users", { email, role, name, ...(password ? { password } : {}) }); return data; },
-    onSuccess: () => { invalidate(); setEmail(""); setName(""); setPassword(""); setRole("profesional"); alert("Usuario creado exitosamente"); },
+    onSuccess: () => { invalidate(); setEmail(""); setName(""); setPassword(""); setRole("profesional"); toast.success("Usuario creado exitosamente"); },
     onError: (err: any) => {
       const d = err.response?.data?.detail;
-      alert(typeof d === 'string' ? d : Array.isArray(d) ? d.map((x: any) => x.msg).join(', ') : "Error al crear profesional");
+      toast.error(typeof d === 'string' ? d : Array.isArray(d) ? d.map((x: any) => x.msg).join(', ') : "Error al crear profesional");
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, body }: { id: number; body: any }) => { const { data } = await api.put(`/api/admin/users/${id}`, body); return data; },
     onSuccess: () => { invalidate(); setEditingUser(null); },
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al actualizar"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al actualizar"),
   });
 
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => { await api.delete(`/api/admin/users/${id}`); },
     onSuccess: invalidate,
-    onError: (err: any) => alert(err.response?.data?.detail || "Error al eliminar"),
+    onError: (err: any) => toast.error(err.response?.data?.detail || "Error al eliminar"),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -167,7 +171,7 @@ export function AdminDashboard() {
                               <Pencil className="h-4 w-4" />
                             </button>
                             {user.id !== currentUser?.id && (
-                              <button onClick={() => { if (window.confirm(`¿Eliminar acceso para ${user.email}?`)) deleteMutation.mutate(user.id); }}
+                              <button onClick={async () => { if (await confirmDialog({ message: `¿Eliminar acceso para ${user.email}?`, confirmLabel: "Eliminar", danger: true })) deleteMutation.mutate(user.id); }}
                                 className="p-2 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg transition-colors" title="Eliminar">
                                 <Trash2 className="h-4 w-4" />
                               </button>

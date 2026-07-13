@@ -8,6 +8,7 @@ import { getMyProfile, uploadAvatar, updateMyName } from "../api/profileApi";
 import logoSidebar from "../assets/logo-sidebar.png.png";
 import logoSidebarDark from "../assets/logo-sidebar-dark.png";
 import { TodayBanner } from "../components/TodayBanner";
+import { useToast } from "../context/ToastContext";
 
 export function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -17,6 +18,7 @@ export function MainLayout() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: profile } = useQuery({
@@ -27,7 +29,7 @@ export function MainLayout() {
   const avatarMutation = useMutation({
     mutationFn: uploadAvatar,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["myProfile"] }),
-    onError: () => alert("Error al subir la foto"),
+    onError: () => toast.error("Error al subir la foto"),
   });
 
   const nameMutation = useMutation({
@@ -36,7 +38,7 @@ export function MainLayout() {
       queryClient.invalidateQueries({ queryKey: ["myProfile"] });
       setEditingName(false);
     },
-    onError: () => alert("Error al actualizar el nombre"),
+    onError: () => toast.error("Error al actualizar el nombre"),
   });
 
   const handleNameEdit = () => {

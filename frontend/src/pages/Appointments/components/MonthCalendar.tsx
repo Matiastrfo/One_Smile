@@ -17,8 +17,10 @@ const MONTHS = [
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-slate-400",
+  CONFIRMED: "bg-blue-500",
   ATTENDED: "bg-emerald-500",
   ABSENT: "bg-rose-500",
+  CANCELLED: "bg-amber-500",
 };
 
 function getDaysInMonth(year: number, month: number) {
