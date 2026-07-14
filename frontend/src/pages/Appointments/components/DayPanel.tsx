@@ -14,6 +14,7 @@ interface DayPanelProps {
   appointments: Appointment[];
   getPatientName: (id: number) => string;
   getPatientEmail?: (id: number) => string;
+  getPatientPhone?: (id: number) => string;
   onAdd: () => void;
   onDelete: (id: number) => void;
   onStatusChange: (id: number, status: string, notes?: string) => void;
@@ -31,7 +32,7 @@ const STATUS_CONFIG = {
   CANCELLED: { label: "Cancelado",  icon: XCircle,      cls: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",        dot: "bg-amber-500" },
 };
 
-export function DayPanel({ date, appointments, getPatientName, getPatientEmail, onAdd, onDelete, onStatusChange, professionalName }: DayPanelProps) {
+export function DayPanel({ date, appointments, getPatientName, getPatientEmail, getPatientPhone, onAdd, onDelete, onStatusChange, professionalName }: DayPanelProps) {
   const { user } = useAuth();
   const toast = useToast();
   const sorted = [...appointments].sort((a, b) => a.date_time.localeCompare(b.date_time));
@@ -43,13 +44,32 @@ export function DayPanel({ date, appointments, getPatientName, getPatientEmail, 
   const sendReminder = async (appt: Appointment) => {
     const email = getPatientEmail?.(appt.patient_id);
     if (!email) { toast.error("Este paciente no tiene email cargado en sus datos filiatorios."); return; }
+
+    const patientName = getPatientName(appt.patient_id);
+    const profName = professionalName ?? user?.name ?? user?.email ?? "";
+    const [datePart, timePart] = appt.date_time.split(" ");
+
+    // Se abre en el mismo click (antes del await) para que el navegador no lo bloquee como popup.
+    const phone = getPatientPhone?.(appt.patient_id) ?? "";
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone) {
+      const waText = encodeURIComponent(
+        `Hola ${patientName}! Te recordamos tu turno del ${datePart} a las ${timePart?.slice(0, 5) ?? ""}` +
+        (appt.reason ? ` (${appt.reason})` : "") +
+        ` con ${profName}. ¡Te esperamos!`
+      );
+      window.open(`https://wa.me/${cleanPhone}?text=${waText}`, "_blank");
+    } else {
+      toast.error("Este paciente no tiene teléfono cargado — no se pudo abrir WhatsApp.");
+    }
+
     setSendingReminder(appt.id!);
     try {
       await api.post("/api/email/reminder", {
-        patient_name: getPatientName(appt.patient_id),
+        patient_name: patientName,
         patient_email: email,
         date_time: appt.date_time,
-        professional_name: professionalName ?? user?.name ?? user?.email ?? "",
+        professional_name: profName,
         reason: appt.reason ?? "",
       });
       toast.success("Recordatorio enviado correctamente");

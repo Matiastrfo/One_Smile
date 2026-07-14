@@ -102,6 +102,11 @@ export function AppointmentsPage() {
     return p?.email ?? "";
   };
 
+  const getPatientPhone = (id: number) => {
+    const p = patients.find(p => p.id === id) as any;
+    return p?.phone ?? "";
+  };
+
   const handleDelete = async (id: number) => {
     if (await confirmDialog({ message: "¿Cancelar este turno?", confirmLabel: "Cancelar turno", danger: true })) deleteMutation.mutate(id);
   };
@@ -164,6 +169,7 @@ export function AppointmentsPage() {
                 appointments={apptsBySelectedDay}
                 getPatientName={getPatientName}
                 getPatientEmail={getPatientEmail}
+                getPatientPhone={getPatientPhone}
                 professionalName={user?.name || user?.email}
                 onAdd={handleAddClick}
                 onDelete={handleDelete}
