@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle, X, Mail, FlaskConical, DollarSign } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Activity, FileText, CalendarPlus, Heart, Save, User, Camera, Wallet, MessageCircle, X, Mail, FlaskConical, DollarSign, StickyNote } from "lucide-react";
 
 function whatsappUrl(phone: string) {
   return `https://wa.me/${phone.replace(/\D/g, "")}`;
 }
 import { useNavigate, useLocation } from "react-router-dom";
-import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updateDentitionMode, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry } from "../../api/patientApi";
+import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updateDentitionMode, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry, addMedicalReport, deleteMedicalReport } from "../../api/patientApi";
 import type { PatientImage, Budget, BudgetItem, AccountEntryItem } from "../../types";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
 import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64, downloadAdmisionPdf, getAdmisionPdfBase64 } from "../../utils/odontogramPdf";
@@ -326,6 +326,27 @@ export function PatientProfilePage() {
     onError: () => toast.error("Error al eliminar el tratamiento"),
   });
 
+  const [newNoteText, setNewNoteText] = useState("");
+
+  const addNoteMutation = useMutation({
+    mutationFn: (description: string) => addMedicalReport(patientId, { description, date_time: new Date().toISOString() }),
+    onSuccess: () => {
+      setNewNoteText("");
+      queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] });
+      toast.success("Nota agregada");
+    },
+    onError: () => toast.error("Error al agregar la nota"),
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (reportId: number) => deleteMedicalReport(patientId, reportId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patientReport", patientId] });
+      toast.success("Nota eliminada");
+    },
+    onError: () => toast.error("Error al eliminar la nota"),
+  });
+
   const treatmentMutation = useMutation({
     mutationFn: (data: { description: string; price: string; date_time: string }) => {
       const payload = { ...data, price: parseFloat(data.price) || 0 };
@@ -423,7 +444,7 @@ export function PatientProfilePage() {
 
   return (
     <>
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="space-y-6 pb-10">
       <div className="flex items-center gap-4">
         <Link to="/patients" className="p-2 hover:bg-accent hover:text-primary rounded-full transition-colors">
           <ArrowLeft className="h-5 w-5" />
@@ -981,6 +1002,59 @@ export function PatientProfilePage() {
               />
             )}
             {showPriceList && <PriceListModal onClose={() => setShowPriceList(false)} />}
+
+            <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-4">
+              <h3 className="flex items-center gap-2 font-semibold text-foreground">
+                <StickyNote className="h-4 w-4 text-primary" />
+                Notas del Odontograma
+              </h3>
+              <div className="flex gap-3">
+                <textarea
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  placeholder="Escribí una nota sobre el odontograma..."
+                  rows={2}
+                  className="flex-1 rounded-xl border border-border/60 bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button
+                  onClick={() => newNoteText.trim() && addNoteMutation.mutate(newNoteText.trim())}
+                  disabled={!newNoteText.trim() || addNoteMutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed h-fit"
+                >
+                  <Save className="h-4 w-4" />
+                  Guardar
+                </button>
+              </div>
+              <div className="space-y-2">
+                {(report?.medical_reports ?? []).length === 0 && (
+                  <p className="text-sm text-muted-foreground">No hay notas registradas todavía.</p>
+                )}
+                {[...(report?.medical_reports ?? [])]
+                  .sort((a, b) => (b.date_time || "").localeCompare(a.date_time || ""))
+                  .map((noteItem) => (
+                    <div key={noteItem.id} className="flex items-start justify-between gap-3 rounded-xl border border-border/50 bg-muted/30 px-3 py-2">
+                      <div>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{noteItem.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {noteItem.date_time ? new Date(noteItem.date_time).toLocaleString("es-AR") : ""}
+                          {noteItem.professional_email ? ` · ${noteItem.professional_email}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (await confirmDialog({ message: "¿Eliminar esta nota del odontograma?", confirmLabel: "Eliminar", danger: true })) {
+                            deleteNoteMutation.mutate(noteItem.id!);
+                          }
+                        }}
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors shrink-0"
+                        title="Eliminar nota"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         )}
 

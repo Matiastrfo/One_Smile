@@ -81,6 +81,25 @@ def run_backup(force: bool = False) -> dict:
     return {"skipped": False, "path": dest_path}
 
 
+def restore_backup(filename: str) -> dict:
+    config = get_backup_config()
+    folder = config["destination_path"]
+    source_path = os.path.join(folder, filename)
+
+    if not filename.startswith(BACKUP_PREFIX) or not filename.endswith(".db"):
+        raise ValueError("Nombre de archivo de backup inválido")
+    if not os.path.isfile(source_path):
+        raise ValueError("El archivo de backup no existe")
+
+    # Snapshot de seguridad de la base actual antes de sobrescribirla.
+    safety = run_backup(force=True)
+
+    shutil.copy2(source_path, DB_NAME)
+    logger.info(f"Base de datos restaurada desde: {source_path}")
+
+    return {"restored_from": filename, "safety_backup": safety.get("path")}
+
+
 def _prune_old_backups(folder: str, keep_count: int):
     backups = sorted(
         (f for f in os.listdir(folder) if f.startswith(BACKUP_PREFIX) and f.endswith(".db")),

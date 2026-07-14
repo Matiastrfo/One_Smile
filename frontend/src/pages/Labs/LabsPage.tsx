@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FlaskConical, Plus, Phone, Mail, FileText, Upload, X, Check, Trash2, Pencil, Filter, ListChecks } from "lucide-react";
 import { getLabs, createLab, updateLab, deleteLab, uploadPriceList, getLabJobs, createLabJob, markJobReceived, deleteLabJob, type Lab, type LabJob } from "../../api/labApi";
-import { getPatients } from "../../api/patientApi";
+import { getAllPatientsFull } from "../../api/patientApi";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 
@@ -309,7 +309,7 @@ function JobModal({ labs, defaultPatientId, onClose, onSaved }: { labs: Lab[]; d
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
 
-  const { data: patients = [] } = useQuery({ queryKey: ["patients"], queryFn: () => getPatients() });
+  const { data: patients = [] } = useQuery({ queryKey: ["patients", "all"], queryFn: () => getAllPatientsFull() });
 
   const saveMutation = useMutation({
     mutationFn: () => createLabJob({ lab_id: labId, patient_id: patientId, description, notes: notes || undefined }),

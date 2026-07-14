@@ -29,9 +29,9 @@ def create_patient(patient: Patient, current_user: User = Depends(get_current_us
     patient.professional_id = current_user.id
     return patient_service.create_patient(patient)
 
-@router.get("/", response_model=List[Patient])
-def get_patients(search: Optional[str] = None, current_user: User = Depends(get_current_user)):
-    return patient_service.get_all_patients(search, professional_id=current_user.id)
+@router.get("/")
+def get_patients(search: Optional[str] = None, page: int = 1, page_size: int = 50, current_user: User = Depends(get_current_user)):
+    return patient_service.get_all_patients(search, professional_id=current_user.id, page=page, page_size=page_size)
 
 
 
@@ -63,6 +63,11 @@ def add_medical_report(patient_id: int, report: MedicalReport, current_user: Use
     report.patient_id = patient_id
     report.professional_id = current_user.id
     return patient_service.add_medical_report(report)
+
+@router.delete("/{patient_id}/medical-reports/{report_id}")
+def delete_medical_report(patient_id: int, report_id: int, current_user: User = Depends(get_current_user)):
+    patient_service.delete_medical_report(report_id)
+    return {"message": "Nota eliminada"}
 
 @router.put("/{patient_id}", response_model=Patient)
 def update_patient(patient_id: int, patient: Patient, current_user: User = Depends(get_current_user)):

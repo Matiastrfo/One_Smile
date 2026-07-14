@@ -32,3 +32,8 @@ export const listBackups = async (): Promise<BackupFile[]> => {
   const { data } = await api.get("/api/backup/list");
   return data;
 };
+
+export const restoreBackup = async (filename: string): Promise<{ message: string; restored_from: string; safety_backup: string | null }> => {
+  const { data } = await api.post("/api/backup/restore", { filename });
+  return data;
+};

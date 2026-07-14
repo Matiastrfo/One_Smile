@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from domain.user import User
 from api.dependencies import require_admin
-from services.backup_service import get_backup_config, save_backup_config, run_backup, list_backups
+from services.backup_service import get_backup_config, save_backup_config, run_backup, list_backups, restore_backup
 
 router = APIRouter()
 
@@ -11,6 +11,10 @@ class BackupConfigUpdate(BaseModel):
     destination_path: str = ""
     enabled: bool = True
     keep_count: int = 30
+
+
+class BackupRestoreRequest(BaseModel):
+    filename: str
 
 
 @router.get("/config")
@@ -37,3 +41,12 @@ def trigger_backup(current_user: User = Depends(require_admin)):
 @router.get("/list")
 def read_backups(current_user: User = Depends(require_admin)):
     return list_backups()
+
+
+@router.post("/restore")
+def trigger_restore(body: BackupRestoreRequest, current_user: User = Depends(require_admin)):
+    try:
+        result = restore_backup(body.filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"message": "Base de datos restaurada correctamente", **result}

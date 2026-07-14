@@ -454,6 +454,59 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN price_list_path TEXT")
     cursor.execute("DROP TABLE IF EXISTS treatment_prices")
 
+    # Tabla: catálogo de obras sociales (entradas globales y personalizadas por profesional)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS obras_sociales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            professional_id INTEGER,
+            arancel_path TEXT,
+            norma_path TEXT,
+            is_custom INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Tabla: PDFs subidos por cada profesional para una entrada del catálogo global
+    # (una obra social del catálogo es compartida, pero cada profesional sube sus propios PDFs)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS obra_social_uploads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            obra_social_id INTEGER NOT NULL,
+            professional_id INTEGER NOT NULL,
+            arancel_path TEXT,
+            norma_path TEXT,
+            FOREIGN KEY (obra_social_id) REFERENCES obras_sociales(id) ON DELETE CASCADE,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(obra_social_id, professional_id)
+        )
+    """)
+
+    # Seed: catálogo de obras sociales argentinas reales (solo si la tabla está vacía)
+    cursor.execute("SELECT COUNT(*) FROM obras_sociales WHERE professional_id IS NULL")
+    if cursor.fetchone()[0] == 0:
+        catalog_names = [
+            "OSDE", "Swiss Medical", "Galeno", "Medicus", "IOMA", "PAMI", "OSDEPYM",
+            "Unión Personal", "OSECAC", "Luis Pasteur", "Jerárquicos Salud", "Sancor Salud",
+            "Federada Salud", "ASE Nacional", "OSPRERA", "OSPAT", "OSPACP", "ATSA", "Apross",
+            "DASUTEN", "OSPIP", "OSPIL", "ACA Salud", "Avalian", "Omint", "Hospital Italiano (plan de salud)",
+            "Hospital Alemán", "Docthos", "TV Salud", "Prevención Salud", "OSPE", "OSPJN", "OSPOCE",
+            "IOSFA", "OSMATA", "OSPSIP", "OSPCCARA", "OSCHOCA", "OSPACA", "ASOMED", "OSPIME", "IPSST",
+            "OSPeCon", "UOM", "UPCN", "OSPSA", "OSFATLYF", "OSPETSYP", "ASSPPEEG", "DOSUBA", "OSPRO",
+            "ASE", "Poder Judicial", "Luz y Fuerza", "OSPACARA", "Bancarios", "Camioneros", "OSPIA",
+            "Sanidad", "Comercio", "Gastronómicos", "Construcción",
+        ]
+        seen = set()
+        for name in catalog_names:
+            key = name.strip().lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            cursor.execute(
+                "INSERT INTO obras_sociales (name, professional_id, is_custom) VALUES (?, NULL, 0)",
+                (name.strip(),),
+            )
+
     conn.commit()
     conn.close()
 

@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar as CalendarIcon, Settings } from "lucide-react";
 import { getAppointments, deleteAppointment, updateAppointmentStatus, createAppointment, quickCreateAppointment } from "../../api/appointmentApi";
-import { getPatients } from "../../api/patientApi";
+import { getAllPatientsFull } from "../../api/patientApi";
 import { getScheduleConfig, saveScheduleConfig } from "../../api/scheduleConfigApi";
 import { MonthCalendar } from "./components/MonthCalendar";
 import { DayPanel } from "./components/DayPanel";
@@ -45,8 +45,8 @@ export function AppointmentsPage() {
   });
 
   const { data: patients = [] } = useQuery({
-    queryKey: ["patients"],
-    queryFn: () => getPatients(),
+    queryKey: ["patients", "all"],
+    queryFn: () => getAllPatientsFull(),
   });
 
   const { data: scheduleConfig } = useQuery({

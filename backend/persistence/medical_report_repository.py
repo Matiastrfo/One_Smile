@@ -14,6 +14,13 @@ class MedicalReportRepository:
         conn.close()
         return report
     
+    def delete(self, report_id: int) -> None:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM medical_reports WHERE id = ?", (report_id,))
+        conn.commit()
+        conn.close()
+
     def get_by_patient(self, patient_id: int) -> list[MedicalReport]:
         conn = get_connection()
         cursor = conn.cursor()

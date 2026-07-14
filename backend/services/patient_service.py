@@ -19,8 +19,10 @@ class PatientService:
     def create_patient(self, patient: Patient) -> Patient:
         return self.repository.insert(patient)
 
-    def get_all_patients(self, search: str = None, professional_id: int = None) -> List[Patient]:
-        return self.repository.get_all(search, professional_id)
+    def get_all_patients(self, search: str = None, professional_id: int = None, page: int = 1, page_size: int = 50) -> dict:
+        items = self.repository.get_all(search, professional_id, page, page_size)
+        total = self.repository.count_all(search, professional_id)
+        return {"items": items, "total": total, "page": page, "page_size": page_size}
 
     def get_patient(self, patient_id: int) -> Patient | None:
         return self.repository.get_by_id(patient_id)
@@ -80,6 +82,9 @@ class PatientService:
         
     def add_medical_report(self, report: MedicalReport) -> MedicalReport:
         return self.medical_report_repo.insert(report)
+
+    def delete_medical_report(self, report_id: int) -> None:
+        self.medical_report_repo.delete(report_id)
 
     def update_patient(self, id: int, patient: Patient) -> Patient:
         patient.id = id

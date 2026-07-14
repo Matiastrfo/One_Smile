@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Bell, X, Clock, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getAppointments } from "../api/appointmentApi";
-import { getPatients } from "../api/patientApi";
+import { getAllPatientsFull } from "../api/patientApi";
 
 export function TodayBanner() {
   const [dismissed, setDismissed] = useState(false);
@@ -14,8 +14,8 @@ export function TodayBanner() {
   });
 
   const { data: patients = [] } = useQuery({
-    queryKey: ["patients"],
-    queryFn: () => getPatients(),
+    queryKey: ["patients", "all"],
+    queryFn: () => getAllPatientsFull(),
   });
 
   const today = new Date();

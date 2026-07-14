@@ -21,19 +21,26 @@ export function PatientsPage() {
   const [formData, setFormData] = useState({ name: "", dni: "", phone: "", email: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   // Debounce search query
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
+      setPage(1);
     }, 300);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const { data: patientsData = [], isLoading } = useQuery({
-    queryKey: ["patients", debouncedSearch],
-    queryFn: () => getPatients(debouncedSearch),
+  const { data: patientsPage, isLoading } = useQuery({
+    queryKey: ["patients", debouncedSearch, page],
+    queryFn: () => getPatients(debouncedSearch, page, PAGE_SIZE),
   });
+
+  const patientsData = patientsPage?.items ?? [];
+  const total = patientsPage?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const patients = [...patientsData].sort((a, b) => {
     const nameA = `${a.name ?? ""} ${(a as any).last_name ?? ""}`.trim().toLocaleLowerCase("es-AR");
@@ -199,7 +206,30 @@ export function PatientsPage() {
               )}
             </tbody>
           </table>
-          
+          {total > 0 && (
+            <div className="flex items-center justify-between gap-4 px-6 py-3 border-t border-border/60 text-sm text-muted-foreground">
+              <span>
+                Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} de {total} pacientes
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="px-3 py-1.5 border border-input rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  Anterior
+                </button>
+                <span className="px-2">Página {page} de {totalPages}</span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 border border-input rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

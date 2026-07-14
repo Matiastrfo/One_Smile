@@ -31,6 +31,7 @@ from api.profile_router import router as profile_router
 from api.email_router import router as email_router
 from api.backup_router import router as backup_router
 from api.lab_router import router as lab_router
+from api.obra_social_router import router as obra_social_router
 from services.scheduler import start_scheduler, stop_scheduler
 from services.backup_service import run_backup
 
@@ -106,6 +107,7 @@ app.include_router(profile_router, prefix="/api/profile", tags=["profile"])
 app.include_router(email_router, prefix="/api/email", tags=["email"])
 app.include_router(backup_router, prefix="/api/backup", tags=["backup"])
 app.include_router(lab_router, prefix="/api/labs", tags=["labs"])
+app.include_router(obra_social_router, prefix="/api/obras-sociales", tags=["obras-sociales"])
 
 @app.get("/")
 def read_root():

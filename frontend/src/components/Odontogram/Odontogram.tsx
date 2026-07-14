@@ -82,7 +82,9 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
     const ro = new ResizeObserver(entries => {
       const w = entries[0]?.contentRect.width ?? el.offsetWidth;
       const ratio = w / NATURAL_WIDTH;
-      setZoom(ratio < 1 ? Math.max(ratio, 0.6) : 1);
+      // Se achica hasta 60% en pantallas angostas, y ahora también puede agrandarse
+      // hasta 130% en monitores anchos en vez de quedar fijo al 100% con espacio libre sobrando.
+      setZoom(Math.min(Math.max(ratio, 0.6), 1.3));
     });
     ro.observe(el);
     return () => ro.disconnect();

@@ -22,6 +22,13 @@ export interface Patient {
   dentition_mode?: string;
 }
 
+export interface PatientsPage {
+  items: Patient[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
 export interface Appointment {
   id?: number;
   patient_id: number;

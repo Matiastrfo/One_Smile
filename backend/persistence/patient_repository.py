@@ -25,7 +25,7 @@ class PatientRepository:
         conn.close()
         return patient
 
-    def get_all(self, search: str = None, professional_id: int = None) -> list[Patient]:
+    def get_all(self, search: str = None, professional_id: int = None, page: int = 1, page_size: int = 50) -> list[Patient]:
         conn = get_connection()
         cursor = conn.cursor()
         conditions, params = [], []
@@ -35,10 +35,27 @@ class PatientRepository:
             conditions.append("(name LIKE ? OR last_name LIKE ? OR dni LIKE ? OR phone LIKE ?)")
             params.extend([f"%{search}%"] * 4)
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        cursor.execute(f"SELECT {_COLS} FROM patients {where}", params)
+        limit_params = list(params)
+        offset = max(page - 1, 0) * page_size
+        cursor.execute(f"SELECT {_COLS} FROM patients {where} ORDER BY name LIMIT ? OFFSET ?", limit_params + [page_size, offset])
         rows = cursor.fetchall()
         conn.close()
         return [_map(r) for r in rows]
+
+    def count_all(self, search: str = None, professional_id: int = None) -> int:
+        conn = get_connection()
+        cursor = conn.cursor()
+        conditions, params = [], []
+        if professional_id is not None:
+            conditions.append("professional_id = ?"); params.append(professional_id)
+        if search:
+            conditions.append("(name LIKE ? OR last_name LIKE ? OR dni LIKE ? OR phone LIKE ?)")
+            params.extend([f"%{search}%"] * 4)
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        cursor.execute(f"SELECT COUNT(*) FROM patients {where}", params)
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else 0
 
     def get_by_id(self, patient_id: int) -> Patient | None:
         conn = get_connection()

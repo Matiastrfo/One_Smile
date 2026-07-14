@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { HardDrive, RotateCcw, FolderOpen } from "lucide-react";
-import { getBackupConfig, saveBackupConfig, runBackupNow, listBackups } from "../../api/backupApi";
+import { HardDrive, RotateCcw, FolderOpen, History } from "lucide-react";
+import { getBackupConfig, saveBackupConfig, runBackupNow, listBackups, restoreBackup } from "../../api/backupApi";
 import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -16,6 +17,7 @@ function formatDate(iso: string): string {
 export function BackupsPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const [form, setForm] = useState({ destination_path: "", enabled: true, keep_count: 30 });
 
   const { data: config } = useQuery({ queryKey: ["backupConfig"], queryFn: getBackupConfig });
@@ -47,6 +49,23 @@ export function BackupsPage() {
     onSuccess: () => { invalidate(); toast.success("Backup creado correctamente"); },
     onError: (err: any) => toast.error(err.response?.data?.detail || "No se pudo crear el backup"),
   });
+
+  const restoreMutation = useMutation({
+    mutationFn: restoreBackup,
+    onSuccess: () => { invalidate(); toast.success("Base de datos restaurada correctamente"); },
+    onError: (err: any) => toast.error(err.response?.data?.detail || "No se pudo restaurar el backup"),
+  });
+
+  const handleRestore = async (filename: string) => {
+    const confirmed = await confirmDialog({
+      message: `¿Seguro que querés restaurar la base de datos desde "${filename}"? Se reemplazarán todos los datos actuales por los de este backup. Antes se generará una copia de seguridad automática de la base actual.`,
+      confirmLabel: "Restaurar",
+      danger: true,
+    });
+    if (confirmed) {
+      restoreMutation.mutate(filename);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -125,6 +144,14 @@ export function BackupsPage() {
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>{formatDate(b.created_at)}</span>
                     <span>{formatSize(b.size_bytes)}</span>
+                    <button
+                      onClick={() => handleRestore(b.filename)}
+                      disabled={restoreMutation.isPending}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 border border-red-300 text-red-600 dark:text-red-400 dark:border-red-900 rounded-lg text-xs font-medium hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-50 transition-colors"
+                      title="Restaurar este backup"
+                    >
+                      <History className="h-3.5 w-3.5" /> Restaurar
+                    </button>
                   </div>
                 </div>
               ))}

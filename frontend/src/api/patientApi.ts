@@ -1,5 +1,5 @@
 import api from "./axios";
-import type { Patient } from "../types";
+import type { Patient, PatientsPage } from "../types";
 
 export const sendDocumentByEmail = async (params: {
   toEmail: string;
@@ -20,10 +20,19 @@ export const sendDocumentByEmail = async (params: {
   return data;
 };
 
-export const getPatients = async (search?: string): Promise<Patient[]> => {
-  const url = search ? `/patients/?search=${encodeURIComponent(search)}` : "/patients/";
-  const { data } = await api.get(url);
+export const getPatients = async (search?: string, page: number = 1, pageSize: number = 50): Promise<PatientsPage> => {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  params.set("page", String(page));
+  params.set("page_size", String(pageSize));
+  const { data } = await api.get(`/patients/?${params.toString()}`);
   return data;
+};
+
+// Lista completa (sin paginar) para selects/autocomplete/resúmenes que necesitan todos los pacientes.
+export const getAllPatientsFull = async (search?: string): Promise<Patient[]> => {
+  const page = await getPatients(search, 1, 1000);
+  return page.items;
 };
 
 export const createPatient = async (patient: Patient): Promise<Patient> => {
@@ -62,6 +71,10 @@ export const deleteTreatment = async (patientId: number, treatmentId: number): P
 export const addMedicalReport = async (patientId: number, report: any): Promise<any> => {
   const { data } = await api.post(`/patients/${patientId}/medical-reports`, { ...report, patient_id: patientId });
   return data;
+};
+
+export const deleteMedicalReport = async (patientId: number, reportId: number): Promise<void> => {
+  await api.delete(`/patients/${patientId}/medical-reports/${reportId}`);
 };
 
 export const getOdontogram = async (patientId: number): Promise<any> => {

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2, FlaskConical, HardDrive, Mail, Sun, Moon } from "lucide-react";
+import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2, FlaskConical, HardDrive, Mail, Sun, Moon, ShieldPlus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -61,6 +61,7 @@ export function MainLayout() {
     { to: "/cuenta-corriente", icon: Wallet, label: "Cuenta Corriente" },
     { to: "/estadisticas", icon: BarChart2, label: "Estadísticas" },
     { to: "/laboratorio", icon: FlaskConical, label: "Laboratorio" },
+    { to: "/obras-sociales", icon: ShieldPlus, label: "Obras Sociales" },
   ];
 
   const adminLinks = user?.role === "admin"

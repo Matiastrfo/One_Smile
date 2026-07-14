@@ -11,6 +11,7 @@ import { PaymentsPage } from "./pages/Payments/PaymentsPage";
 import { CuentaCorrientePage } from "./pages/CuentaCorriente/CuentaCorrientePage";
 import { EstadisticasPage } from "./pages/Estadisticas/EstadisticasPage";
 import { LabsPage } from "./pages/Labs/LabsPage";
+import { ObrasSocialesPage } from "./pages/ObrasSociales/ObrasSocialesPage";
 import { BackupsPage } from "./pages/Backups/BackupsPage";
 import { EmailRemindersPage } from "./pages/Reminders/EmailRemindersPage";
 import { AuthProvider } from "./context/AuthContext";
@@ -41,6 +42,7 @@ function App() {
                 <Route path="cuenta-corriente" element={<CuentaCorrientePage />} />
                 <Route path="estadisticas" element={<EstadisticasPage />} />
                 <Route path="laboratorio" element={<LabsPage />} />
+                <Route path="obras-sociales" element={<ObrasSocialesPage />} />
                 
                 {/* Admin Only Route */}
                 <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
