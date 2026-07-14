@@ -101,7 +101,7 @@ export function PatientProfilePage() {
       .catch(() => {});
   };
 
-  const autoDeleteTreatmentForTooth = (toothNumber: number, archOnly = false, directOnly = false, sameTypeOnly?: TreatmentType) => {
+  const autoDeleteTreatmentForTooth = (toothNumber: number, archOnly = false, directOnly = false, sameTypeOnly?: TreatmentType, sameColorOnly?: string | null) => {
     const treatments = report?.treatments ?? [];
     const matches = treatments.filter(t => {
       const archTeeth = (t as any).arch_teeth;
@@ -120,6 +120,10 @@ export function PatientProfilePage() {
         // (ej: se agregaron más caras a la misma caries). Si el diente pasa a OTRO tipo de tratamiento,
         // el registro anterior es un evento clínico distinto y se preserva en el historial.
         if (sameTypeOnly && (t as any).odontogram_type !== sameTypeOnly) return false;
+        // Mismo criterio para el color: una obturación roja en vestibular y una verde en distal
+        // son dos eventos clínicos distintos aunque compartan tipo — no hay que borrar la primera
+        // al agregar la segunda, solo cuando se extiende la MISMA caries (mismo color) a más caras.
+        if (sameTypeOnly && sameColorOnly !== undefined && (t as any).odontogram_color !== sameColorOnly) return false;
         return true;
       }
       if ((t as any).tooth_number === toothNumber) return true;
@@ -144,9 +148,9 @@ export function PatientProfilePage() {
       if (update.treatment_type === 'NONE') {
         autoDeleteTreatmentForTooth(toothNumber, false, true);
       } else {
-        // Reemplaza el registro anterior sólo si es el mismo tipo de tratamiento (ej: más caras de Caries).
-        // Si cambia a un tipo distinto, se preserva el registro anterior como historial.
-        autoDeleteTreatmentForTooth(toothNumber, false, true, update.treatment_type);
+        // Reemplaza el registro anterior sólo si es el mismo tipo Y color (ej: más caras de la misma
+        // caries). Si cambia el tipo o el color, es un evento clínico distinto y se preserva como historial.
+        autoDeleteTreatmentForTooth(toothNumber, false, true, update.treatment_type, update.color);
         autoAddTreatment(toothNumber, update.treatment_type, { color: update.color, faces: update.faces }, dentition);
       }
     },
@@ -990,8 +994,8 @@ export function PatientProfilePage() {
                 partialStart={odontogramPartialStart}
                 onSetPartialStart={setOdontogramPartialStart}
                 onAddOverlay={(toothNumber, update, dentition) => {
-                  // Reemplaza el overlay anterior del mismo tipo en vez de acumular uno nuevo por cada click
-                  autoDeleteTreatmentForTooth(toothNumber, false, true, update.treatment_type);
+                  // Reemplaza el overlay anterior del mismo tipo Y color en vez de acumular uno nuevo por cada click
+                  autoDeleteTreatmentForTooth(toothNumber, false, true, update.treatment_type, update.color);
                   autoAddTreatment(toothNumber, update.treatment_type, { color: update.color, faces: update.faces }, dentition, true);
                 }}
                 onDeleteTreatment={(treatmentId) =>

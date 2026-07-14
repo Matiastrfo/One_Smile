@@ -121,6 +121,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
         if (isArchType && t.odontogram_type === pieceType && isInSameSegment(t.tooth_number, toothModalNumber, pieceType)) return true;
         return false;
       })
+      // El más reciente arriba: por fecha si está disponible, con id como desempate.
+      .sort((a: any, b: any) => (b.date_time ?? '').localeCompare(a.date_time ?? '') || (b.id ?? 0) - (a.id ?? 0))
     : [];
 
   const getDisplayInfo = (num: number): { label: number; dimmed: boolean } => {
@@ -147,15 +149,31 @@ const Odontogram: React.FC<OdontogramProps> = ({ pieces, treatments = [], partia
       .filter((t: any) => {
         if (t.tooth_number !== num) return false;
         if (!t.odontogram_type || t.odontogram_type === 'NONE') return false;
-        // No duplicar el tratamiento activo
-        if (t.odontogram_type === activeTreatment) return false;
+        const tType = t.odontogram_type as TreatmentType;
+        // CARIES/FILLING son tratamientos por cara: dos registros del mismo tipo pueden
+        // coexistir en caras distintas (ej: obturacion roja a la derecha + caries verde a
+        // la izquierda). No se descartan por tipo aca — el filtro por cara de abajo se
+        // encarga de no repintar una cara que ya muestra el tratamiento activo.
+        if (tType !== 'CARIES' && tType !== 'FILLING' && tType === activeTreatment) return false;
         return true;
       })
-      .map((t: any) => ({
-        treatment_type: t.odontogram_type as TreatmentType,
-        color: t.odontogram_color ?? null,
-        faces: (() => { try { return JSON.parse(t.odontogram_faces || '[]'); } catch { return []; } })(),
-      }));
+      .map((t: any) => {
+        const treatmentType = t.odontogram_type as TreatmentType;
+        let faces: string[] = (() => { try { return JSON.parse(t.odontogram_faces || '[]'); } catch { return []; } })();
+        // CARIES/FILLING pintan la cara con color semi-transparente: si la pieza actual ya
+        // pinta esa misma cara (tratamiento mas reciente), no volver a pintarla encima o el
+        // color viejo se mezcla con el nuevo (ej: azul + rojo = violeta). Solo se muestra la
+        // cara del overlay si quedo "libre" (ya no forma parte del tratamiento activo).
+        if (treatmentType === 'CARIES' || treatmentType === 'FILLING') {
+          faces = faces.filter(f => !piece.faces.includes(f as any));
+        }
+        return {
+          treatment_type: treatmentType,
+          color: t.odontogram_color ?? null,
+          faces,
+        };
+      })
+      .filter(ov => !((ov.treatment_type === 'CARIES' || ov.treatment_type === 'FILLING') && ov.faces.length === 0));
   };
 
   const archHasProtesis = (archTeeth: number[], type: TreatmentType) =>

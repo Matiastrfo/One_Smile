@@ -113,6 +113,14 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
             />
           ))}
 
+          {/* Overlays: tratamientos historicos de otro tipo en la misma pieza.
+              Van primero para que el indicador del tratamiento activo (mas abajo) quede siempre encima. */}
+          {overlays.map((ov, i) => (
+            <g key={i} style={{ pointerEvents: 'none' }}>
+              {renderOverlaySvg(ov.treatment_type, ov.color, ov.faces, puenteRole)}
+            </g>
+          ))}
+
           {/* CROWN — colored border outline */}
           {treatment_type === 'CROWN' && (
             <rect
@@ -199,13 +207,6 @@ export default function Tooth({ piece, onFaceClick, onErase, isRangeStart = fals
               className="cursor-pointer" onClick={() => onFaceClick(tooth_number, 'center')} />
           )}
 
-
-          {/* Overlays: additional treatments stored in treatments table */}
-          {overlays.map((ov, i) => (
-            <g key={i} style={{ pointerEvents: 'none' }}>
-              {renderOverlaySvg(ov.treatment_type, ov.color, ov.faces, puenteRole)}
-            </g>
-          ))}
         </svg>
       </div>
 

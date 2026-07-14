@@ -42,6 +42,17 @@ class DentalPieceRepository:
         conn.close()
         return self._row_to_piece(row) if row else None
 
+    def get_piece(self, patient_id: int, tooth_number: int) -> Optional[DentalPiece]:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, patient_id, tooth_number, treatment_type, color, faces FROM dental_pieces WHERE patient_id = ? AND tooth_number = ?",
+            (patient_id, tooth_number),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return self._row_to_piece(row) if row else None
+
     def get_by_patient_id(self, patient_id: int) -> List[DentalPiece]:
         conn = get_connection()
         cursor = conn.cursor()

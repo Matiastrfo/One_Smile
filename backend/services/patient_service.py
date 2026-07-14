@@ -2,7 +2,8 @@ from domain.patient import Patient
 from domain.treatment import Treatment
 from domain.medical_report import MedicalReport
 from domain.patient_report import PatientReport
-from domain.dental_piece import TreatmentType
+from domain.dental_piece import TreatmentType, TreatmentColor
+import json
 from persistence.patient_repository import PatientRepository
 from persistence.appointment_repository import AppointmentRepository
 from persistence.treatment_repository import TreatmentRepository
@@ -63,6 +64,15 @@ class PatientService:
             return
 
         tooth = treatment.tooth_number
+
+        # Si el tratamiento borrado no era el que representaba el estado activo de la pieza
+        # (mismo tipo y color), no hay nada que recalcular: la pieza sigue reflejando otro
+        # tratamiento y este solo desaparece del historial.
+        piece = odontogram_service.get_piece(patient_id, tooth)
+        piece_color = piece.color.value if piece and piece.color else None
+        if not piece or piece.treatment_type.value != treatment.odontogram_type or piece_color != treatment.odontogram_color:
+            return
+
         remaining = self.treatment_repo.get_by_patient(patient_id)
 
         # No resetear si el diente aún pertenece a una arcada activa (via arch_teeth)
@@ -73,12 +83,23 @@ class PatientService:
         if still_in_arch:
             return
 
-        # No resetear si quedan otros tratamientos directos para este diente
-        still_has_direct = any(t.tooth_number == tooth for t in remaining)
-        if still_has_direct:
-            return
-
-        odontogram_service.update_tooth(patient_id, tooth, TreatmentType.NONE, None, [])
+        # El tratamiento borrado ERA el estado activo de la pieza: buscar el tratamiento
+        # directo mas reciente que quede para este diente y que la pieza lo herede, o
+        # resetear a NONE si no queda ninguno.
+        direct_remaining = [
+            t for t in remaining
+            if t.tooth_number == tooth and not t.arch_teeth and t.odontogram_type and t.odontogram_type != 'NONE'
+        ]
+        if direct_remaining:
+            latest = max(direct_remaining, key=lambda t: (t.date_time or '', t.id or 0))
+            try:
+                faces = json.loads(latest.odontogram_faces or '[]')
+            except (TypeError, ValueError):
+                faces = []
+            latest_color = TreatmentColor(latest.odontogram_color) if latest.odontogram_color else None
+            odontogram_service.update_tooth(patient_id, tooth, TreatmentType(latest.odontogram_type), latest_color, faces)
+        else:
+            odontogram_service.update_tooth(patient_id, tooth, TreatmentType.NONE, None, [])
         
     def add_medical_report(self, report: MedicalReport) -> MedicalReport:
         return self.medical_report_repo.insert(report)

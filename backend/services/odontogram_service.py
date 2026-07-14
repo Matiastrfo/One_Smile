@@ -26,3 +26,6 @@ class OdontogramService:
 
     def update_tooth(self, patient_id: int, tooth_number: int, treatment_type: TreatmentType, color: Optional[TreatmentColor], faces: List[str]) -> None:
         self.repo.update_tooth(patient_id, tooth_number, treatment_type, color, faces)
+
+    def get_piece(self, patient_id: int, tooth_number: int) -> Optional[DentalPiece]:
+        return self.repo.get_piece(patient_id, tooth_number)
