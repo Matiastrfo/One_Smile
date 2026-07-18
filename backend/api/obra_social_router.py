@@ -7,13 +7,14 @@ from typing import List, Optional
 from domain.user import User
 from api.dependencies import get_current_user
 from persistence.obra_social_repository import ObraSocialRepository
+from uploads_path import UPLOADS_DIR as BASE_UPLOADS_DIR
 
 router = APIRouter()
 
 obra_social_repo = ObraSocialRepository()
 
-UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "obras_sociales")
-os.makedirs(UPLOADS_DIR, exist_ok=True)
+OBRAS_SOCIALES_DIR = os.path.join(BASE_UPLOADS_DIR, "obras_sociales")
+os.makedirs(OBRAS_SOCIALES_DIR, exist_ok=True)
 
 
 class ObraSocialCreate(BaseModel):
@@ -75,7 +76,10 @@ def delete_obra_social(obra_social_id: int, current_user: User = Depends(get_cur
 def _remove_file(rel_path: Optional[str]):
     if not rel_path:
         return
-    abs_path = os.path.join(os.path.dirname(__file__), "..", rel_path.lstrip("/"))
+    stripped = rel_path.lstrip("/")
+    if stripped.startswith("uploads/"):
+        stripped = stripped[len("uploads/"):]
+    abs_path = os.path.join(BASE_UPLOADS_DIR, stripped)
     if os.path.exists(abs_path):
         try:
             os.remove(abs_path)
@@ -96,7 +100,7 @@ def _save_pdf(file: UploadFile, obra_social_id: int) -> str:
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="El archivo tiene que ser un PDF")
     filename = f"{obra_social_id}_{uuid.uuid4().hex}.pdf"
-    dest = os.path.join(UPLOADS_DIR, filename)
+    dest = os.path.join(OBRAS_SOCIALES_DIR, filename)
     with open(dest, "wb") as f:
         shutil.copyfileobj(file.file, f)
     return f"/uploads/obras_sociales/{filename}"

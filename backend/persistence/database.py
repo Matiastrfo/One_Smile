@@ -312,6 +312,23 @@ def init_db():
         )
     """)
 
+    # Diagnostico del paciente: radiografias, tomografias, panoramicas, etc.
+    # La categoria es texto libre (no un TreatmentType cerrado como en patient_images)
+    # para que el profesional pueda agregar las que necesite ademas de las precargadas.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS patient_diagnostic_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            professional_id INTEGER,
+            date TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'Radiografía',
+            description TEXT,
+            file_path TEXT NOT NULL,
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    """)
+
     # Tabla: cuenta corriente unificada (trabajos + pagos)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS account_entries (

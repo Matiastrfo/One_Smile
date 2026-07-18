@@ -7,7 +7,7 @@ function whatsappUrl(phone: string) {
   return `https://wa.me/${phone.replace(/\D/g, "")}`;
 }
 import { useNavigate, useLocation } from "react-router-dom";
-import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updateDentitionMode, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry, addMedicalReport, deleteMedicalReport } from "../../api/patientApi";
+import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updateDentitionMode, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getDiagnosticImages, uploadDiagnosticImage, deleteDiagnosticImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry, addMedicalReport, deleteMedicalReport } from "../../api/patientApi";
 import type { PatientImage, Budget, BudgetItem, AccountEntryItem } from "../../types";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
 import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64, downloadAdmisionPdf, getAdmisionPdfBase64 } from "../../utils/odontogramPdf";
@@ -41,6 +41,10 @@ export function PatientProfilePage() {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [imgUploadForm, setImgUploadForm] = useState({ treatment_type: "GENERAL", description: "" });
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [diagFilter, setDiagFilter] = useState<string>("ALL");
+  const [diagUploadForm, setDiagUploadForm] = useState({ category: "Radiografía", description: "" });
+  const [newDiagCategory, setNewDiagCategory] = useState("");
+  const diagImageInputRef = useRef<HTMLInputElement>(null);
   const [ccModal, setCcModal] = useState<{ type: "trabajo" | "pago" } | null>(null);
   const [ccForm, setCcForm] = useState({ date: new Date().toISOString().split("T")[0], detail: "", amount: "" });
   const [odontogramPartialStart, setOdontogramPartialStart] = useState<number | null>(null);
@@ -442,6 +446,23 @@ export function PatientProfilePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["patientImages", patientId] }),
   });
 
+  const { data: diagnosticImages = [] } = useQuery<any[]>({
+    queryKey: ["diagnosticImages", patientId],
+    queryFn: () => getDiagnosticImages(patientId),
+    enabled: activeTab === "history",
+  });
+
+  const uploadDiagnosticMutation = useMutation({
+    mutationFn: (file: File) => uploadDiagnosticImage(patientId, file, diagUploadForm.category, diagUploadForm.description),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diagnosticImages", patientId] }),
+    onError: () => toast.error("Error al subir la imagen"),
+  });
+
+  const deleteDiagnosticMutation = useMutation({
+    mutationFn: (imageId: number) => deleteDiagnosticImage(patientId, imageId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diagnosticImages", patientId] }),
+  });
+
 
   if (isLoading) return <div className="p-8 text-center animate-pulse">Cargando Historia Clínica...</div>;
   if (!report) return <div className="p-8 text-center text-red-500">Paciente no encontrado.</div>;
@@ -625,8 +646,8 @@ export function PatientProfilePage() {
 
         {/* TAB: Historia Clínica */}
         {activeTab === "history" && (
-          <div className="flex gap-6 items-start">
-          <div className="space-y-5 flex-1 min-w-0">
+          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-foreground">Grupo sanguíneo</label>
@@ -707,15 +728,15 @@ export function PatientProfilePage() {
 
           </div>
 
-          {/* Columna derecha */}
-          <div className="w-80 shrink-0 space-y-4">
+          {/* Imágenes clínicas y escáner, debajo de la ficha médica */}
+          <div className="space-y-4">
             {(() => {
               const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
               const IMAGE_LABELS: Record<string, string> = {
                 GENERAL: "General", CARIES: "Caries", FILLING: "Obturación", EXTRACTION_PENDING: "Extracción indicada",
                 EXTRACTED: "Extraído", CROWN: "Corona", RX: "Radiografía", IMPLANT: "Implante",
                 PERNO: "Perno", ENDODONCIA: "Endodoncia", PROTESIS: "Prótesis",
-                PROTESIS_PARCIAL: "Prótesis parcial", PUENTE: "Puente", CARESTREAM: "Scanner Carestream",
+                PROTESIS_PARCIAL: "Prótesis parcial", PUENTE: "Puente", CARESTREAM: "Escáner",
               };
               const clinicalTypes = Object.keys(IMAGE_LABELS).filter(t => t !== "CARESTREAM");
               const types = clinicalTypes;
@@ -776,42 +797,44 @@ export function PatientProfilePage() {
                         ))}
                       </div>
 
-                      {/* Galería agrupada */}
-                      {(imageFilter === "ALL" ? groups : [imageFilter]).map(group => {
-                        const imgs = filtered.filter(i => i.treatment_type === group);
-                        if (imgs.length === 0) return null;
-                        return (
-                          <div key={group} className="space-y-2">
-                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{IMAGE_LABELS[group] ?? group}</h4>
-                            <div className="grid grid-cols-2 gap-3">
-                              {imgs.map(img => (
-                                <div key={img.id} className="rounded-xl border border-border/60 bg-card overflow-hidden">
-                                  <div className="relative aspect-square">
-                                    <img src={`${API_BASE}${img.file_path}`} alt={img.description || IMAGE_LABELS[img.treatment_type]}
-                                      className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                      onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)} />
-                                    <div className="absolute top-1 left-1 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">{img.date}</div>
+                      {/* Galería agrupada: una tarjeta por tratamiento, acomodadas lado a lado */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {(imageFilter === "ALL" ? groups : [imageFilter]).map(group => {
+                          const imgs = filtered.filter(i => i.treatment_type === group);
+                          if (imgs.length === 0) return null;
+                          return (
+                            <div key={group} className="space-y-2 p-3 rounded-xl border border-border/60 bg-muted/20">
+                              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{IMAGE_LABELS[group] ?? group}</h4>
+                              <div className="grid grid-cols-3 gap-2">
+                                {imgs.map(img => (
+                                  <div key={img.id} className="rounded-xl border border-border/60 bg-card overflow-hidden">
+                                    <div className="relative aspect-square">
+                                      <img src={`${API_BASE}${img.file_path}`} alt={img.description || IMAGE_LABELS[img.treatment_type]}
+                                        className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                        onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)} />
+                                      <div className="absolute top-1 left-1 text-[8px] font-bold bg-black/60 text-white px-1 py-0.5 rounded">{img.date}</div>
+                                    </div>
+                                    {img.description && (
+                                      <p className="text-[9px] text-muted-foreground px-1.5 pt-1 truncate">{img.description}</p>
+                                    )}
+                                    <button
+                                      onClick={async () => { if (await confirmDialog({ message: "¿Eliminar esta imagen?", confirmLabel: "Eliminar", danger: true })) deleteImageMutation.mutate(img.id!); }}
+                                      className="w-full flex items-center justify-center gap-1 py-1 text-[10px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                    >
+                                      <Trash2 className="h-3 w-3" /> Eliminar
+                                    </button>
                                   </div>
-                                  {img.description && (
-                                    <p className="text-[10px] text-muted-foreground px-2 pt-1 truncate">{img.description}</p>
-                                  )}
-                                  <button
-                                    onClick={async () => { if (await confirmDialog({ message: "¿Eliminar esta imagen?", confirmLabel: "Eliminar", danger: true })) deleteImageMutation.mutate(img.id!); }}
-                                    className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                                  >
-                                    <Trash2 className="h-3 w-3" /> Eliminar
-                                  </button>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </>
                   )}
-                {/* Sección Scanner Carestream */}
+                {/* Sección Escáner */}
                 <div className="pt-4 border-t border-border/60 space-y-3">
-                  <h3 className="text-sm font-bold text-foreground">Scanner Carestream</h3>
+                  <h3 className="text-sm font-bold text-foreground">Escáner</h3>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{carestreamImages.length} imagen{carestreamImages.length !== 1 ? "es" : ""}</span>
                     <button
@@ -828,19 +851,19 @@ export function PatientProfilePage() {
                   {carestreamImages.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-5 border border-dashed border-border/60 rounded-xl">No hay scanners cargados.</p>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-3">
                       {carestreamImages.map(img => (
                         <div key={img.id} className="rounded-xl border border-border/60 bg-card overflow-hidden">
                           <div className="relative aspect-square">
-                            <img src={`${API_BASE}${img.file_path}`} alt="Scanner Carestream"
+                            <img src={`${API_BASE}${img.file_path}`} alt="Escáner"
                               className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                               onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)} />
-                            <div className="absolute top-1 left-1 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">{img.date}</div>
+                            <div className="absolute top-1 left-1 text-[8px] font-bold bg-black/60 text-white px-1 py-0.5 rounded">{img.date}</div>
                           </div>
-                          {img.description && <p className="text-[10px] text-muted-foreground px-2 pt-1 truncate">{img.description}</p>}
+                          {img.description && <p className="text-[9px] text-muted-foreground px-1.5 pt-1 truncate">{img.description}</p>}
                           <button
                             onClick={async () => { if (await confirmDialog({ message: "¿Eliminar este scanner?", confirmLabel: "Eliminar", danger: true })) deleteImageMutation.mutate(img.id!); }}
-                            className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            className="w-full flex items-center justify-center gap-1 py-1 text-[10px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                           >
                             <Trash2 className="h-3 w-3" /> Eliminar
                           </button>
@@ -850,6 +873,134 @@ export function PatientProfilePage() {
                   )}
                 </div>
               </div>
+              );
+            })()}
+          </div>
+
+          {/* Diagnóstico del paciente: radiografías, tomografías, panorámicas, y categorías propias */}
+          <div className="space-y-4">
+            {(() => {
+              const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+              const DEFAULT_DIAG_CATEGORIES = ["Radiografía", "Tomografía", "Panorámica"];
+              const usedCategories = Array.from(new Set(diagnosticImages.map((i: any) => i.category))) as string[];
+              const diagCategories = Array.from(new Set([...DEFAULT_DIAG_CATEGORIES, ...usedCategories]));
+              const diagFiltered = diagFilter === "ALL" ? diagnosticImages : diagnosticImages.filter((i: any) => i.category === diagFilter);
+              const diagGroups = diagCategories.filter(c => diagnosticImages.some((i: any) => i.category === c));
+
+              return (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-foreground">Diagnóstico del paciente</h3>
+                  <input ref={diagImageInputRef} type="file" accept="image/*" multiple className="hidden"
+                    onChange={e => {
+                      Array.from(e.target.files || []).forEach(f => uploadDiagnosticMutation.mutate(f));
+                      e.target.value = "";
+                    }} />
+
+                  {/* Controles de upload */}
+                  <div className="flex flex-wrap items-end gap-3 p-4 bg-muted/30 border border-border/60 rounded-xl">
+                    <div className="space-y-1 flex-1 min-w-[140px]">
+                      <label className="text-xs font-semibold text-muted-foreground">Categoría</label>
+                      <select
+                        value={diagUploadForm.category}
+                        onChange={e => {
+                          if (e.target.value === "__new__") return;
+                          setDiagUploadForm(f => ({ ...f, category: e.target.value }));
+                        }}
+                        className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        {diagCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                        <option value="__new__" disabled>── agregar nueva abajo ──</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1 min-w-[160px]">
+                      <label className="text-xs font-semibold text-muted-foreground">Nueva categoría <span className="font-normal">(opcional)</span></label>
+                      <div className="flex gap-1.5">
+                        <input type="text" value={newDiagCategory}
+                          onChange={e => setNewDiagCategory(e.target.value)}
+                          placeholder="Ej: Fotografía intraoral"
+                          className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                        <button type="button"
+                          onClick={() => {
+                            const trimmed = newDiagCategory.trim();
+                            if (!trimmed) return;
+                            setDiagUploadForm(f => ({ ...f, category: trimmed }));
+                            setNewDiagCategory("");
+                          }}
+                          disabled={!newDiagCategory.trim()}
+                          className="px-3 py-2 rounded-xl text-sm font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
+                        >
+                          Usar
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1 flex-1 min-w-[160px]">
+                      <label className="text-xs font-semibold text-muted-foreground">Descripción <span className="font-normal">(opcional)</span></label>
+                      <input type="text" value={diagUploadForm.description}
+                        onChange={e => setDiagUploadForm(f => ({ ...f, description: e.target.value }))}
+                        placeholder="Ej: Rx panorámica preoperatoria"
+                        className="w-full border border-input bg-background px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                    <button onClick={() => diagImageInputRef.current?.click()} disabled={uploadDiagnosticMutation.isPending}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 disabled:opacity-50 shrink-0">
+                      <Plus className="h-4 w-4" />
+                      {uploadDiagnosticMutation.isPending ? "Subiendo..." : `Subir a "${diagUploadForm.category}"`}
+                    </button>
+                  </div>
+
+                  {diagnosticImages.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-6 border border-dashed border-border/60 rounded-xl">No hay imágenes de diagnóstico cargadas.</p>
+                  ) : (
+                    <>
+                      {/* Filtros */}
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => setDiagFilter("ALL")}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${diagFilter === "ALL" ? "bg-primary text-primary-foreground border-primary" : "border-border/60 hover:bg-accent"}`}>
+                          Todos ({diagnosticImages.length})
+                        </button>
+                        {diagGroups.map(c => (
+                          <button key={c} onClick={() => setDiagFilter(c)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${diagFilter === c ? "bg-primary text-primary-foreground border-primary" : "border-border/60 hover:bg-accent"}`}>
+                            {c} ({diagnosticImages.filter((i: any) => i.category === c).length})
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Galería agrupada por categoría, acomodadas lado a lado */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {(diagFilter === "ALL" ? diagGroups : [diagFilter]).map(group => {
+                          const imgs = diagFiltered.filter((i: any) => i.category === group);
+                          if (imgs.length === 0) return null;
+                          return (
+                            <div key={group} className="space-y-2 p-3 rounded-xl border border-border/60 bg-muted/20">
+                              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{group}</h4>
+                              <div className="grid grid-cols-3 gap-2">
+                                {imgs.map((img: any) => (
+                                  <div key={img.id} className="rounded-xl border border-border/60 bg-card overflow-hidden">
+                                    <div className="relative aspect-square">
+                                      <img src={`${API_BASE}${img.file_path}`} alt={img.description || group}
+                                        className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                        onClick={() => setLightboxImg(`${API_BASE}${img.file_path}`)} />
+                                      <div className="absolute top-1 left-1 text-[8px] font-bold bg-black/60 text-white px-1 py-0.5 rounded">{img.date}</div>
+                                    </div>
+                                    {img.description && (
+                                      <p className="text-[9px] text-muted-foreground px-1.5 pt-1 truncate">{img.description}</p>
+                                    )}
+                                    <button
+                                      onClick={async () => { if (await confirmDialog({ message: "¿Eliminar esta imagen?", confirmLabel: "Eliminar", danger: true })) deleteDiagnosticMutation.mutate(img.id!); }}
+                                      className="w-full flex items-center justify-center gap-1 py-1 text-[10px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                    >
+                                      <Trash2 className="h-3 w-3" /> Eliminar
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
               );
             })()}
           </div>

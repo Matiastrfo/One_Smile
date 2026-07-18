@@ -43,15 +43,19 @@ export function DayPanel({ date, appointments, getPatientName, getPatientEmail, 
 
   const sendReminder = async (appt: Appointment) => {
     const email = getPatientEmail?.(appt.patient_id);
-    if (!email) { toast.error("Este paciente no tiene email cargado en sus datos filiatorios."); return; }
+    const phone = getPatientPhone?.(appt.patient_id) ?? "";
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    if (!email && !cleanPhone) {
+      toast.error("Este paciente no tiene email ni teléfono cargado en sus datos filiatorios.");
+      return;
+    }
 
     const patientName = getPatientName(appt.patient_id);
     const profName = professionalName ?? user?.name ?? user?.email ?? "";
     const [datePart, timePart] = appt.date_time.split(" ");
 
     // Se abre en el mismo click (antes del await) para que el navegador no lo bloquee como popup.
-    const phone = getPatientPhone?.(appt.patient_id) ?? "";
-    const cleanPhone = phone.replace(/\D/g, "");
     if (cleanPhone) {
       const waText = encodeURIComponent(
         `Hola ${patientName}! Te recordamos tu turno del ${datePart} a las ${timePart?.slice(0, 5) ?? ""}` +
@@ -61,6 +65,11 @@ export function DayPanel({ date, appointments, getPatientName, getPatientEmail, 
       window.open(`https://wa.me/${cleanPhone}?text=${waText}`, "_blank");
     } else {
       toast.error("Este paciente no tiene teléfono cargado — no se pudo abrir WhatsApp.");
+    }
+
+    if (!email) {
+      toast.error("Este paciente no tiene email cargado — no se envió el mail.");
+      return;
     }
 
     setSendingReminder(appt.id!);

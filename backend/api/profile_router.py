@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from domain.user import User
 from api.dependencies import get_current_user
 from persistence.user_repository import UserRepository
+from uploads_path import UPLOADS_DIR
 
 router = APIRouter()
 user_repo = UserRepository()
 
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "avatars")
+UPLOAD_DIR = os.path.join(UPLOADS_DIR, "avatars")
 
 @router.get("/me", response_model=User)
 def get_me(current_user: User = Depends(get_current_user)):
@@ -43,7 +44,7 @@ async def upload_avatar(file: UploadFile = File(...), current_user: User = Depen
     updated = user_repo.update(current_user.id, avatar_path=avatar_path)
     return updated
 
-PRICE_LIST_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "price-lists")
+PRICE_LIST_DIR = os.path.join(UPLOADS_DIR, "price-lists")
 MAX_PRICE_LIST_SIZE = 20 * 1024 * 1024  # 20MB
 
 @router.post("/price-list", response_model=User)

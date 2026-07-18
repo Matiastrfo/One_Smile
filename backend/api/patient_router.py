@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
@@ -7,6 +7,8 @@ from domain.patient_payment import PatientPayment
 from persistence.patient_payment_repository import PatientPaymentRepository
 from domain.patient_image import PatientImage
 from persistence.patient_image_repository import PatientImageRepository
+from domain.diagnostic_image import DiagnosticImage
+from persistence.diagnostic_image_repository import DiagnosticImageRepository
 from domain.budget import Budget, BudgetItem
 from persistence.budget_repository import BudgetRepository
 from domain.account_entry import AccountEntry
@@ -85,7 +87,8 @@ class DentitionModeUpdate(BaseModel):
 def update_dentition_mode(patient_id: int, body: DentitionModeUpdate, current_user: User = Depends(get_current_user)):
     return patient_service.update_dentition_mode(patient_id, body.dentition_mode)
 
-PATIENT_PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "patients")
+from uploads_path import UPLOADS_DIR
+PATIENT_PHOTOS_DIR = os.path.join(UPLOADS_DIR, "patients")
 os.makedirs(PATIENT_PHOTOS_DIR, exist_ok=True)
 
 @router.post("/{patient_id}/photo", response_model=Patient)
@@ -203,7 +206,7 @@ def delete_budget(patient_id: int, budget_id: int, current_user: User = Depends(
     BudgetRepository().delete(budget_id)
     return {"message": "Presupuesto eliminado"}
 
-PATIENT_IMAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "images")
+PATIENT_IMAGES_DIR = os.path.join(UPLOADS_DIR, "images")
 os.makedirs(PATIENT_IMAGES_DIR, exist_ok=True)
 
 @router.get("/{patient_id}/images", response_model=List[PatientImage])
@@ -214,8 +217,8 @@ def get_patient_images(patient_id: int, current_user: User = Depends(get_current
 def upload_patient_image(
     patient_id: int,
     file: UploadFile = File(...),
-    treatment_type: str = "GENERAL",
-    description: str = "",
+    treatment_type: str = Form("GENERAL"),
+    description: str = Form(""),
     current_user: User = Depends(get_current_user),
 ):
     from datetime import date as _date
@@ -239,7 +242,54 @@ def delete_patient_image(patient_id: int, image_id: int, current_user: User = De
     repo = PatientImageRepository()
     file_path = repo.delete(image_id)
     if file_path:
-        abs_path = os.path.join(os.path.dirname(__file__), "..", file_path.lstrip("/"))
+        rel_path = file_path.lstrip("/")
+        if rel_path.startswith("uploads/"):
+            rel_path = rel_path[len("uploads/"):]
+        abs_path = os.path.join(UPLOADS_DIR, rel_path)
+        if os.path.exists(abs_path):
+            os.remove(abs_path)
+    return {"message": "Imagen eliminada"}
+
+PATIENT_DIAGNOSTIC_IMAGES_DIR = os.path.join(UPLOADS_DIR, "diagnostics")
+os.makedirs(PATIENT_DIAGNOSTIC_IMAGES_DIR, exist_ok=True)
+
+@router.get("/{patient_id}/diagnostic-images", response_model=List[DiagnosticImage])
+def get_diagnostic_images(patient_id: int, current_user: User = Depends(get_current_user)):
+    return DiagnosticImageRepository().get_by_patient(patient_id)
+
+@router.post("/{patient_id}/diagnostic-images", response_model=DiagnosticImage)
+def upload_diagnostic_image(
+    patient_id: int,
+    file: UploadFile = File(...),
+    category: str = Form("Radiografía"),
+    description: str = Form(""),
+    current_user: User = Depends(get_current_user),
+):
+    from datetime import date as _date
+    ext = os.path.splitext(file.filename or "img.jpg")[1].lower() or ".jpg"
+    filename = f"{patient_id}_{uuid.uuid4().hex}{ext}"
+    dest = os.path.join(PATIENT_DIAGNOSTIC_IMAGES_DIR, filename)
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    img = DiagnosticImage(
+        patient_id=patient_id,
+        professional_id=current_user.id,
+        date=str(_date.today()),
+        category=category.strip() or "Radiografía",
+        description=description or None,
+        file_path=f"/uploads/diagnostics/{filename}",
+    )
+    return DiagnosticImageRepository().insert(img)
+
+@router.delete("/{patient_id}/diagnostic-images/{image_id}")
+def delete_diagnostic_image(patient_id: int, image_id: int, current_user: User = Depends(get_current_user)):
+    repo = DiagnosticImageRepository()
+    file_path = repo.delete(image_id)
+    if file_path:
+        rel_path = file_path.lstrip("/")
+        if rel_path.startswith("uploads/"):
+            rel_path = rel_path[len("uploads/"):]
+        abs_path = os.path.join(UPLOADS_DIR, rel_path)
         if os.path.exists(abs_path):
             os.remove(abs_path)
     return {"message": "Imagen eliminada"}

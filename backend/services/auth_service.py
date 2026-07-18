@@ -4,12 +4,17 @@ from datetime import datetime, timedelta
 from jose import jwt
 from typing import Optional
 from domain.user import UserInDB, TokenData
+from persistence.database import DB_NAME
 import bcrypt
 
 def _load_secret() -> str:
     key = os.getenv("JWT_SECRET_KEY", "")
     if not key:
-        _path = os.path.join(os.path.dirname(__file__), "..", ".jwt_secret")
+        # Guardar junto a la base de datos (ruta estable en AppData via DB_PATH), NO relativa
+        # a __file__: en el .exe empaquetado con PyInstaller, __file__ apunta a una carpeta
+        # temporal que Windows borra en cada reinicio, generando una clave nueva cada vez y
+        # invalidando todas las sesiones activas al cerrar la app.
+        _path = os.path.join(os.path.dirname(os.path.abspath(DB_NAME)), ".jwt_secret")
         if os.path.exists(_path):
             with open(_path) as f:
                 key = f.read().strip()

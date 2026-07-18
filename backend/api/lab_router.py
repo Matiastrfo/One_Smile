@@ -10,13 +10,14 @@ from domain.lab import Lab, LabJob
 from api.dependencies import get_current_user
 from persistence.lab_repository import LabRepository, LabJobRepository
 from services.email_service import send_lab_job_notification
+from uploads_path import UPLOADS_DIR
 
 router = APIRouter()
 
 lab_repo = LabRepository()
 job_repo = LabJobRepository()
 
-PRICE_LISTS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "labs")
+PRICE_LISTS_DIR = os.path.join(UPLOADS_DIR, "labs")
 os.makedirs(PRICE_LISTS_DIR, exist_ok=True)
 
 

@@ -71,12 +71,13 @@ async def limit_request_size(request: Request, call_next):
         return JSONResponse(status_code=413, content={"detail": "Request demasiado grande"})
     return await call_next(request)
 
-UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+from uploads_path import UPLOADS_DIR
 os.makedirs(os.path.join(UPLOADS_DIR, "avatars"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "patients"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "images"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "labs"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "price-lists"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "obras_sociales"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 @app.on_event("startup")
