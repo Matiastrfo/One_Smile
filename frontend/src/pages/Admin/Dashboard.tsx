@@ -82,7 +82,7 @@ export function AdminDashboard() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="space-y-8">
       <header className="border-b pb-4">
         <div className="flex items-center gap-4 mb-2">
           <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-accent text-primary shrink-0">

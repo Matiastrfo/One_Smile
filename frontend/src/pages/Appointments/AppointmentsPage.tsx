@@ -62,15 +62,33 @@ export function AppointmentsPage() {
   const appointmentMutation = useMutation({
     mutationFn: (body: { patient_id: number; date_time: string; reason: string }) =>
       createAppointment({ patient_id: body.patient_id, date_time: body.date_time, reason: body.reason } as any),
-    onSuccess: () => { invalidate(); setShowQuickModal(false); },
+    // No cierra el modal: así se pueden agendar varios turnos seguidos al mismo paciente
+    // sin tener que volver a buscarlo cada vez — solo se cierra con "Cerrar". El toast de éxito
+    // se dispara por llamada (ver onSubmitExisting/bookSlotsForPatient) para poder resumir lotes.
+    onSuccess: invalidate,
     onError: (error: any) => toast.error(error.response?.data?.detail || "Error al agendar"),
   });
 
   const quickMutation = useMutation({
     mutationFn: quickCreateAppointment,
-    onSuccess: () => { invalidate(); setShowQuickModal(false); },
+    onSuccess: () => { invalidate(); toast.success("Turno agendado"); setShowQuickModal(false); },
     onError: (error: any) => toast.error(error.response?.data?.detail || "Error al agendar"),
   });
+
+  // Agenda varios horarios de una para el mismo paciente (tildados en SlotPickerModal),
+  // uno por uno, y muestra un solo toast resumen al final en vez de uno por turno.
+  const bookSlotsForPatient = async (patientId: number, dateTimes: string[], reason: string) => {
+    let ok = 0;
+    for (const date_time of dateTimes) {
+      try {
+        await appointmentMutation.mutateAsync({ patient_id: patientId, date_time, reason });
+        ok++;
+      } catch {
+        // el error ya se muestra vía onError de la mutation
+      }
+    }
+    if (ok > 0) toast.success(ok === 1 ? "Turno agendado" : `${ok} turnos agendados`);
+  };
 
   const configMutation = useMutation({
     mutationFn: saveScheduleConfig,
@@ -130,7 +148,7 @@ export function AppointmentsPage() {
   const handleAddClick = () => setShowQuickModal(true);
 
   return (
-    <main className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+    <main className="space-y-6 p-4 sm:p-6 lg:p-8 w-full">
       <header className="flex items-center gap-4 border-b pb-4">
         <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-xl bg-accent text-primary shrink-0">
           <CalendarIcon className="h-6 w-6" />
@@ -197,7 +215,7 @@ export function AppointmentsPage() {
           preselectedPatientId={preselectedPatientId}
           onClose={() => { setShowQuickModal(false); setPreselectedPatientId(null); }}
           onDateChange={setSelectedDate}
-          onSubmit={appointmentMutation.mutate}
+          onSubmit={data => bookSlotsForPatient(data.patient_id, data.date_times, data.reason)}
           onSubmitNew={quickMutation.mutate}
           isPending={appointmentMutation.isPending || quickMutation.isPending}
         />
@@ -211,7 +229,7 @@ export function AppointmentsPage() {
           preselectedPatientId={preselectedPatientId}
           onClose={() => { setShowQuickModal(false); setPreselectedPatientId(null); }}
           onSubmitNew={quickMutation.mutate}
-          onSubmitExisting={appointmentMutation.mutate}
+          onSubmitExisting={data => appointmentMutation.mutate(data, { onSuccess: () => toast.success("Turno agendado") })}
           isPending={appointmentMutation.isPending}
         />
       )}

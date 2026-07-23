@@ -78,18 +78,21 @@ export function TodayBanner() {
           const time = appt.date_time.split(" ")[1] ?? "";
           const isPending = appt.status === "PENDING";
           return (
-            <div
+            <Link
               key={appt.id}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border
+              to={`/patients/${appt.patient_id}`}
+              state={{ openTab: "odontogram" }}
+              title="Ver historia clínica"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors
                 ${isPending
-                  ? "bg-background border-border text-foreground"
-                  : "bg-muted border-border/50 text-muted-foreground line-through"
+                  ? "bg-background border-border text-foreground hover:border-primary/50 hover:bg-primary/5"
+                  : "bg-muted border-border/50 text-muted-foreground line-through hover:opacity-80"
                 }`}
             >
               <Clock className="h-3 w-3 shrink-0 text-primary" />
               <span className="font-bold text-primary">{time}</span>
               <span>{getPatientName(appt.patient_id)}</span>
-            </div>
+            </Link>
           );
         })}
       </div>

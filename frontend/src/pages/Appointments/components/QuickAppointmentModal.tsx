@@ -39,6 +39,9 @@ export function QuickAppointmentModal({ date, patients, preselectedPatientId, on
     if (mode === "existing") {
       if (!selectedPatient) return;
       onSubmitExisting({ patient_id: selectedPatient.id!, date_time, reason });
+      // El paciente existente queda seleccionado para poder cargarle otro turno
+      // (otro horario) sin tener que volver a buscarlo.
+      setReason("");
     } else {
       if (!patientName.trim()) return;
       onSubmitNew({ patient_name: patientName.trim(), patient_phone: patientPhone.trim() || undefined, patient_email: patientEmail.trim() || undefined, date_time, reason });
@@ -206,7 +209,7 @@ export function QuickAppointmentModal({ date, patients, preselectedPatientId, on
           {/* Acciones */}
           <div className="flex justify-end gap-3 pt-2 border-t">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium border border-input hover:bg-muted transition-colors">
-              Cancelar
+              Cerrar
             </button>
             <button
               type="submit"

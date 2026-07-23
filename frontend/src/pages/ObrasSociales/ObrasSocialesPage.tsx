@@ -39,7 +39,7 @@ export function ObrasSocialesPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="space-y-8">
       <header className="border-b pb-4 flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-4 mb-2">

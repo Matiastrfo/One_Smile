@@ -38,7 +38,7 @@ export function CuentaCorrientePage() {
   if (isLoading) return <div className="p-8 text-center animate-pulse text-muted-foreground">Cargando cuentas corrientes...</div>;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10">
+    <div className="space-y-6 pb-10">
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-accent text-primary shrink-0">
           <Wallet className="h-6 w-6" />

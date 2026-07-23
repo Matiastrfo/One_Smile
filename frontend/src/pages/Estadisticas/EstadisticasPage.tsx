@@ -68,7 +68,7 @@ export function EstadisticasPage() {
   const maxDow   = Math.max(...stats.by_dow.map(d => d.total), 1);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10">
+    <div className="space-y-6 pb-10">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-accent text-primary shrink-0">

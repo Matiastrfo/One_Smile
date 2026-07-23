@@ -20,7 +20,7 @@ interface Props {
   preselectedPatientId?: number | null;
   onClose: () => void;
   onDateChange?: (date: Date) => void;
-  onSubmit: (data: { patient_id: number; date_time: string; reason: string }) => void;
+  onSubmit: (data: { patient_id: number; date_times: string[]; reason: string }) => void;
   onSubmitNew: (data: { patient_name: string; patient_phone?: string; patient_email?: string; date_time: string; reason?: string }) => void;
   isPending: boolean;
 }
@@ -73,7 +73,7 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
     const sched = getDaySchedule(d);
     if (!sched) return;
     onDateChange?.(d);
-    setSelectedSlot(null);
+    setSelectedSlots(new Set());
   };
 
   // Datos del día actualmente seleccionado (prop date)
@@ -81,7 +81,7 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
   const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const slots = generateSlots(currentSchedule);
 
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [patientId, setPatientId] = useState<string>(preselectedPatientId ? String(preselectedPatientId) : "");
   const [search, setSearch] = useState("");
@@ -101,15 +101,33 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
 
   const selectedPatient = patients.find(p => String(p.id) === patientId) ?? null;
 
-  const canSubmit = !!selectedSlot && (mode === "existing" ? !!patientId : !!newName.trim());
+  const canSubmit = selectedSlots.size > 0 && (mode === "existing" ? !!patientId : !!newName.trim());
+
+  // Paciente nuevo: un solo horario por vez (el turno se crea junto con el paciente).
+  // Paciente existente: se pueden tildar varios horarios y agendarlos todos juntos.
+  const toggleSlot = (slot: string) => {
+    if (mode === "new") {
+      setSelectedSlots(new Set([slot]));
+      return;
+    }
+    setSelectedSlots(prev => {
+      const next = new Set(prev);
+      if (next.has(slot)) next.delete(slot); else next.add(slot);
+      return next;
+    });
+  };
 
   const handleSubmit = () => {
-    if (!selectedSlot) return;
-    const date_time = `${dateStr} ${selectedSlot}`;
+    if (selectedSlots.size === 0) return;
+    const dateTimes = Array.from(selectedSlots).sort().map(slot => `${dateStr} ${slot}`);
     if (mode === "existing" && patientId) {
-      onSubmit({ patient_id: parseInt(patientId), date_time, reason });
+      onSubmit({ patient_id: parseInt(patientId), date_times: dateTimes, reason });
+      // El paciente existente queda seleccionado para poder agendarle mas turnos
+      // sin tener que volver a buscarlo — el modal no se cierra solo.
+      setSelectedSlots(new Set());
+      setReason("");
     } else if (mode === "new" && newName.trim()) {
-      onSubmitNew({ patient_name: newName.trim(), patient_phone: newPhone.trim() || undefined, patient_email: newEmail.trim() || undefined, date_time, reason });
+      onSubmitNew({ patient_name: newName.trim(), patient_phone: newPhone.trim() || undefined, patient_email: newEmail.trim() || undefined, date_time: dateTimes[0], reason });
     }
   };
 
@@ -193,17 +211,20 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
           <div>
             <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-primary" /> Horarios disponibles
+              {mode === "existing" && (
+                <span className="font-normal text-xs text-muted-foreground">— podés tildar varios</span>
+              )}
             </p>
             <div className="grid grid-cols-4 gap-2">
               {slots.map(slot => {
                 const booked = bookedTimes.has(slot);
-                const selected = selectedSlot === slot;
+                const selected = selectedSlots.has(slot);
                 return (
                   <button
                     key={slot}
                     type="button"
                     disabled={booked}
-                    onClick={() => setSelectedSlot(slot)}
+                    onClick={() => toggleSlot(slot)}
                     className={`py-2 rounded-xl text-sm font-semibold border transition-all ${
                       booked
                         ? 'bg-muted/50 text-muted-foreground border-border/40 cursor-not-allowed line-through opacity-50'
@@ -334,14 +355,18 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
 
         <footer className="p-5 border-t flex justify-end gap-3 shrink-0">
           <button type="button" onClick={onClose} className="px-4 py-2 border rounded-xl text-sm font-medium hover:bg-muted/50 transition-colors">
-            Cancelar
+            Cerrar
           </button>
           <button
             onClick={handleSubmit}
             disabled={isPending || !canSubmit}
             className="px-5 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:shadow-lg transition-all disabled:opacity-50"
           >
-            {isPending ? "Agendando..." : "Agendar turno"}
+            {isPending
+              ? "Agendando..."
+              : selectedSlots.size > 1
+                ? `Agendar ${selectedSlots.size} turnos`
+                : "Agendar turno"}
           </button>
         </footer>
       </div>
