@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { X, CalendarPlus, Clock, Users, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Patient, Appointment } from "../../../types";
 import type { DaySchedule, ScheduleConfig } from "../../../api/scheduleConfigApi";
@@ -42,6 +42,7 @@ function generateSlots(schedule: DaySchedule): string[] {
 
 export function SlotPickerModal({ date, daySchedule, patients, appointments, allAppointments, scheduleConfig, preselectedPatientId, onClose, onDateChange, onSubmit, onSubmitNew, isPending }: Props) {
   const [weekOffset, setWeekOffset] = useState(0);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
 
   // Generar 7 días a partir del lunes de la semana actual + offset
@@ -68,6 +69,23 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
 
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  // Salto directo a cualquier fecha (mes/día) elegida en el input, sin tener que ir
+  // avanzando semana por semana con las flechitas.
+  const jumpToDate = (isoDate: string) => {
+    if (!isoDate) return;
+    const [y, m, d] = isoDate.split("-").map(Number);
+    const picked = new Date(y, m - 1, d);
+    const pickedDow = picked.getDay() === 0 ? 6 : picked.getDay() - 1;
+    const pickedMonday = new Date(picked);
+    pickedMonday.setDate(picked.getDate() - pickedDow);
+    const todayMonday = new Date(today);
+    todayMonday.setDate(today.getDate() - dow);
+    const diffWeeks = Math.round((pickedMonday.getTime() - todayMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    setWeekOffset(diffWeeks);
+    onDateChange?.(picked);
+    setSelectedSlots(new Set());
+  };
 
   const handleDaySelect = (d: Date) => {
     const sched = getDaySchedule(d);
@@ -147,9 +165,34 @@ export function SlotPickerModal({ date, daySchedule, patients, appointments, all
                 <p className="text-xs text-muted-foreground">Seleccioná un día y horario</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const input = dateInputRef.current;
+                  if (!input) return;
+                  // showPicker() es la forma confiable de abrir el calendario nativo desde un
+                  // click real de usuario — un <label> envolviendo un input oculto no siempre
+                  // lo dispara en Chromium/Electron.
+                  if (typeof input.showPicker === "function") input.showPicker();
+                  else input.focus();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/60 hover:bg-muted cursor-pointer text-xs font-medium text-muted-foreground transition-colors"
+              >
+                Ir a fecha
+              </button>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={dateStr}
+                min={`${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`}
+                onChange={e => jumpToDate(e.target.value)}
+                className="absolute w-0 h-0 opacity-0 pointer-events-none"
+              />
+              <button onClick={onClose} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Selector de días */}
