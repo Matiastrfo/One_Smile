@@ -10,7 +10,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updateDentitionMode, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getDiagnosticImages, uploadDiagnosticImage, deleteDiagnosticImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry, addMedicalReport, deleteMedicalReport } from "../../api/patientApi";
 import type { PatientImage, Budget, BudgetItem, AccountEntryItem } from "../../types";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
-import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64, downloadAdmisionPdf, getAdmisionPdfBase64 } from "../../utils/odontogramPdf";
+import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64, downloadAdmisionPdf, getAdmisionPdfBase64, downloadAccountStatementPdf } from "../../utils/odontogramPdf";
 import { getFaceLabels } from "../../utils/toothFaces";
 import type { PatientReport, DentalPiece, Treatment, TreatmentType, TreatmentColor, ToothFace } from "../../types";
 import Odontogram, { type DentitionMode, toChildNumber } from "../../components/Odontogram/Odontogram";
@@ -20,6 +20,18 @@ import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 
 const COUNTRIES = ["Argentina", "Uruguay", "Chile", "Paraguay", "Bolivia", "Brasil", "Perú", "Colombia", "Venezuela", "Ecuador", "México", "España", "Estados Unidos", "Otro"];
+
+function calculateAge(birthDate: string): number | null {
+  const [y, m, d] = birthDate.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const birth = new Date(y, m - 1, d);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const hasHadBirthdayThisYear = today.getMonth() > birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
+  if (!hasHadBirthdayThisYear) age--;
+  return age >= 0 ? age : null;
+}
 
 export function PatientProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -619,6 +631,24 @@ export function PatientProfilePage() {
                         {COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                  ) : f.key === "birth_date" ? (
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type={f.type || "text"}
+                        value={filiatorio.birth_date ?? ""}
+                        onChange={e => setFiliatorio(prev => ({ ...prev, birth_date: e.target.value }))}
+                        className="flex-1 min-w-0 border border-input bg-background text-foreground px-3 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      {(() => {
+                        const age = filiatorio.birth_date ? calculateAge(filiatorio.birth_date) : null;
+                        return age !== null ? (
+                          <span className="shrink-0 flex items-baseline gap-1 px-3 py-2 rounded-xl bg-primary/10 border border-primary/30 text-primary whitespace-nowrap">
+                            <span className="text-lg font-bold leading-none">{age}</span>
+                            <span className="text-xs font-semibold">año{age !== 1 ? "s" : ""}</span>
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
                   ) : (
                     <input
                       type={f.type || "text"}
@@ -1240,6 +1270,13 @@ export function PatientProfilePage() {
                   className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/30 hover:bg-emerald-700 transition-all"
                 >
                   <Plus className="h-4 w-4" /> Pago
+                </button>
+                <button
+                  onClick={() => downloadAccountStatementPdf(report.patient.name, accountEntries)}
+                  disabled={accountEntries.length === 0}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FileText className="h-4 w-4" /> Descargar PDF
                 </button>
               </div>
 

@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import type { DentalPiece, TreatmentType, Treatment, Budget } from '../types';
+import type { DentalPiece, TreatmentType, Treatment, Budget, AccountEntryItem } from '../types';
 
 const TREATMENT_LABELS: Record<TreatmentType, string> = {
   NONE:               'Sano',
@@ -1442,4 +1442,87 @@ export function downloadAdmisionPdf(patientName: string, returnBase64 = false): 
 
   if (returnBase64) return doc.output('datauristring').split(',')[1];
   doc.save(`admision_${patientName.replace(/\s+/g, '_')}.pdf`);
+}
+
+export function downloadAccountStatementPdf(patientName: string, entries: AccountEntryItem[]): void {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const darkBlue: [number, number, number] = [10, 40, 90];
+  const blue: [number, number, number] = [0, 100, 200];
+  const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+
+  const drawHeader = () => {
+    doc.setFillColor(...darkBlue); doc.rect(0, 0, W, 36, 'F');
+    doc.setFillColor(...blue); doc.rect(0, 33, W, 3, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
+    doc.text('ONE Smile', W / 2, 15, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+    doc.setTextColor(160, 195, 240);
+    doc.text('ODONTOLOGÍA TRIFIRO', W / 2, 22, { align: 'center' });
+    doc.setFontSize(9); doc.setTextColor(200, 225, 255);
+    doc.text('CUENTA CORRIENTE', W / 2, 30, { align: 'center' });
+  };
+  drawHeader();
+
+  doc.setTextColor(...darkBlue); doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.text(patientName, 14, 48);
+  const dateStr = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 120);
+  doc.text(`Emitido el ${dateStr}`, W - 14, 48, { align: 'right' });
+  doc.setDrawColor(...blue); doc.setLineWidth(0.4);
+  doc.line(14, 52, W - 14, 52);
+
+  let y = 65;
+  const colX = [14, 90, 130, 162];
+  const drawTableHeader = () => {
+    doc.setFillColor(240, 245, 255); doc.rect(14, y - 6, W - 28, 10, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...blue);
+    ['Detalle', 'Debe', 'Haber', 'Saldo'].forEach((h, i) => doc.text(h, colX[i], y));
+    y += 8;
+  };
+  drawTableHeader();
+
+  let saldo = 0;
+  let totalDebe = 0;
+  let totalHaber = 0;
+  entries.forEach((entry, idx) => {
+    if (y > H - 40) {
+      doc.addPage();
+      y = 20;
+      drawTableHeader();
+    }
+    saldo += entry.debe - entry.haber;
+    totalDebe += entry.debe;
+    totalHaber += entry.haber;
+    if (idx % 2 === 0) { doc.setFillColor(250, 252, 255); doc.rect(14, y - 5, W - 28, 9, 'F'); }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkBlue);
+    const lines = doc.splitTextToSize(`${entry.date}  —  ${entry.detail}`, 72);
+    doc.text(lines, colX[0], y);
+    doc.text(entry.debe > 0 ? `$${entry.debe.toLocaleString('es-AR')}` : '—', colX[1], y);
+    doc.text(entry.haber > 0 ? `$${entry.haber.toLocaleString('es-AR')}` : '—', colX[2], y);
+    doc.setTextColor(saldo > 0 ? 200 : 0, saldo > 0 ? 40 : 130, saldo > 0 ? 40 : 60);
+    doc.text(`$${Math.abs(saldo).toLocaleString('es-AR')}${saldo < 0 ? ' ↑' : ''}`, colX[3], y);
+    y += Math.max(lines.length * 6, 9);
+  });
+
+  if (y > H - 40) { doc.addPage(); y = 20; }
+  y += 6;
+  doc.setDrawColor(...blue); doc.setLineWidth(0.3); doc.line(14, y, W - 14, y);
+  y += 10;
+  doc.setFillColor(...darkBlue); doc.rect(100, y - 6, W - 114, 12, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(255, 255, 255);
+  const balance = totalDebe - totalHaber;
+  doc.text(`SALDO ${balance > 0 ? 'DEUDOR' : balance < 0 ? 'A FAVOR' : ''}: ${fmt(Math.abs(balance))}`, W - 16, y + 1, { align: 'right' });
+
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFillColor(...darkBlue); doc.rect(0, H - 14, W, 14, 'F');
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(160, 195, 240);
+    doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
+  }
+
+  doc.save(`cuenta_corriente_${patientName.replace(/\s+/g, '_')}.pdf`);
 }
