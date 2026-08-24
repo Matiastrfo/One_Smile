@@ -105,13 +105,14 @@ export function MonthCalendar({ appointments, getPatientName, selectedDate, onDa
                   onClick={() => { if (day && cellDate) onDayClick(cellDate); }}
                   className={`min-h-[96px] p-2 flex flex-col gap-1 transition-colors
                     ${day ? "cursor-pointer hover:bg-primary/5" : "bg-muted/10"}
+                    ${isToday && !isSelected ? "bg-emerald-100 dark:bg-emerald-900/30" : ""}
                     ${isSelected ? "bg-primary/10 ring-2 ring-inset ring-primary/40" : ""}
                   `}
                 >
                   {day && (
                     <>
                       <span className={`text-sm font-semibold self-start leading-none w-7 h-7 flex items-center justify-center rounded-full transition-colors
-                        ${isSelected ? "bg-primary text-primary-foreground" : isToday ? "bg-primary/20 text-primary" : "text-foreground"}`}>
+                        ${isSelected ? "bg-primary text-primary-foreground" : isToday ? "text-emerald-700 dark:text-emerald-300" : "text-foreground"}`}>
                         {day}
                       </span>
                       <div className="flex flex-col gap-0.5 mt-0.5">
