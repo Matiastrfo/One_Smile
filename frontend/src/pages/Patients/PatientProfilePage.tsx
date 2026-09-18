@@ -572,22 +572,28 @@ export function PatientProfilePage() {
             <div className="flex items-center gap-6 p-5 bg-card border border-border/60 rounded-2xl">
               <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) photoMutation.mutate(f); e.target.value = ""; }} />
-              <button onClick={() => photoInputRef.current?.click()} className="relative shrink-0 group" title="Subir foto desde archivo">
+              <div className="relative shrink-0 group">
                 {(report.patient as any).photo_path ? (
                   <img
                     src={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}${(report.patient as any).photo_path}`}
                     alt="Foto del paciente"
-                    className="h-24 w-24 rounded-2xl object-cover ring-2 ring-primary/30"
+                    onClick={() => setLightboxImg(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}${(report.patient as any).photo_path}`)}
+                    className="h-24 w-24 rounded-2xl object-cover ring-2 ring-primary/30 cursor-pointer hover:opacity-90 transition-opacity"
+                    title="Ver foto ampliada"
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-2xl bg-accent flex items-center justify-center text-primary">
+                  <button onClick={() => photoInputRef.current?.click()} className="h-24 w-24 rounded-2xl bg-accent flex items-center justify-center text-primary" title="Subir foto desde archivo">
                     <User className="h-12 w-12" />
-                  </div>
+                  </button>
                 )}
-                <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Camera className="h-6 w-6 text-white" />
-                </div>
-              </button>
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  title="Subir foto desde archivo"
+                  className="absolute -bottom-1.5 -right-1.5 h-8 w-8 rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/30 flex items-center justify-center hover:bg-primary/90 transition-colors"
+                >
+                  <Camera className="h-4 w-4" />
+                </button>
+              </div>
               <div className="space-y-2">
                 <p className="font-bold text-lg">{filiatorio.last_name ? `${filiatorio.name} ${filiatorio.last_name}` : filiatorio.name}</p>
                 <p className="text-sm text-muted-foreground">DNI: {filiatorio.dni || "—"}</p>
