@@ -50,3 +50,9 @@ dist-electron/
 *.sw?
 .DS_Store
 Thumbs.db
+
+# Material archivado (videos, backups viejos): no va al repo
+_archivo/
+
+# Clave de encriptacion local: nunca al repo
+.secret_key
