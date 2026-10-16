@@ -57,6 +57,26 @@ class PatientRepository:
         conn.close()
         return row[0] if row else 0
 
+    def get_contacts(self, professional_id: int) -> list[dict]:
+        """Todos los pacientes del profesional, solo datos de contacto (sin paginar)."""
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name, last_name, email, phone FROM patients WHERE professional_id = ? ORDER BY name",
+            (professional_id,),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [
+            {
+                "id": r[0],
+                "name": f"{r[1] or ''} {r[2] or ''}".strip(),
+                "email": (r[3] or "").strip(),
+                "phone": (r[4] or "").strip(),
+            }
+            for r in rows
+        ]
+
     def get_by_id(self, patient_id: int) -> Patient | None:
         conn = get_connection()
         cursor = conn.cursor()

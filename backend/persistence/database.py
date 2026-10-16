@@ -499,6 +499,21 @@ def init_db():
         )
     """)
 
+    # Promociones: imagenes de campañas de la clinica para enviar a pacientes por mail/WhatsApp.
+    # La categoria es texto libre (a eleccion del profesional) para poder filtrar.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS promotions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            professional_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'General',
+            message TEXT,
+            file_path TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
     # Seed: catálogo de obras sociales argentinas reales (solo si la tabla está vacía)
     cursor.execute("SELECT COUNT(*) FROM obras_sociales WHERE professional_id IS NULL")
     if cursor.fetchone()[0] == 0:

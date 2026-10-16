@@ -32,6 +32,7 @@ from api.email_router import router as email_router
 from api.backup_router import router as backup_router
 from api.lab_router import router as lab_router
 from api.obra_social_router import router as obra_social_router
+from api.promotion_router import router as promotion_router
 from services.scheduler import start_scheduler, stop_scheduler
 from services.backup_service import run_backup
 
@@ -78,6 +79,7 @@ os.makedirs(os.path.join(UPLOADS_DIR, "images"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "labs"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "price-lists"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "obras_sociales"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "promotions"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 @app.on_event("startup")
@@ -109,6 +111,7 @@ app.include_router(email_router, prefix="/api/email", tags=["email"])
 app.include_router(backup_router, prefix="/api/backup", tags=["backup"])
 app.include_router(lab_router, prefix="/api/labs", tags=["labs"])
 app.include_router(obra_social_router, prefix="/api/obras-sociales", tags=["obras-sociales"])
+app.include_router(promotion_router, prefix="/api/promotions", tags=["promotions"])
 
 @app.get("/")
 def read_root():

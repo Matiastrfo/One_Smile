@@ -14,6 +14,7 @@ import { LabsPage } from "./pages/Labs/LabsPage";
 import { ObrasSocialesPage } from "./pages/ObrasSociales/ObrasSocialesPage";
 import { BackupsPage } from "./pages/Backups/BackupsPage";
 import { EmailRemindersPage } from "./pages/Reminders/EmailRemindersPage";
+import { PromotionsPage } from "./pages/Promotions/PromotionsPage";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider } from "./context/ToastContext";
@@ -51,6 +52,7 @@ function App() {
                   <Route path="payments" element={<PaymentsPage />} />
                   <Route path="backups" element={<BackupsPage />} />
                   <Route path="recordatorios" element={<EmailRemindersPage />} />
+                  <Route path="promociones" element={<PromotionsPage />} />
                 </Route>
               </Route>
             </Route>

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2, FlaskConical, HardDrive, Mail, Sun, Moon, ShieldPlus } from "lucide-react";
+import { CalendarDays, Users, Menu, X, LogOut, ShieldAlert, Package, CreditCard, Camera, Pencil, Check, Wallet, BarChart2, FlaskConical, HardDrive, Mail, Sun, Moon, ShieldPlus, Megaphone } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -69,6 +69,7 @@ export function MainLayout() {
         { to: "/admin", icon: ShieldAlert, label: "Panel Admin" },
         { to: "/boxes", icon: Package, label: "Boxes" },
         { to: "/payments", icon: CreditCard, label: "Pagos" },
+        { to: "/promociones", icon: Megaphone, label: "Promociones" },
       ]
     : [];
 

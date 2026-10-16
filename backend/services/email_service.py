@@ -1,7 +1,12 @@
+import io
+import time
+import html as html_lib
 import smtplib
 import logging
+from typing import Callable, List, Optional, Tuple
 from urllib.parse import quote
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from persistence.database import get_connection
 from services.secret_crypto import decrypt_secret
@@ -133,3 +138,100 @@ def send_lab_job_notification(lab_email: str, lab_name: str, patient_name: str, 
     </div>
     """
     return send_email(lab_email, subject, html)
+
+
+def check_email_ready() -> Optional[str]:
+    """Devuelve un mensaje de error si el envio de mails no esta listo, o None si todo OK."""
+    config = get_email_config()
+    if not config.get("enabled"):
+        return "El envío de emails está desactivado. Activalo en Recordatorios."
+    if not config.get("smtp_user") or not config.get("smtp_password"):
+        return "Falta configurar el email (usuario y contraseña) en Recordatorios."
+    return None
+
+
+def _build_promotion_message(config: dict, to_email: str, patient_name: str, subject: str,
+                             message: str, image_bytes: bytes, image_subtype: str) -> MIMEMultipart:
+    safe_name = html_lib.escape(patient_name or "")
+    safe_message = html_lib.escape(message or "").replace("\n", "<br>")
+    greeting = f"Hola <strong>{safe_name}</strong>," if safe_name else "Hola,"
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden">
+      <div style="background:#0a285a;padding:20px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:22px">ONE Smile</h1>
+        <p style="color:#a0c3f0;margin:4px 0 0;font-size:12px">ODONTOLOGÍA TRIFIRO</p>
+      </div>
+      <div style="padding:24px 28px">
+        <p style="color:#444;font-size:14px;margin:0 0 16px">{greeting}</p>
+        {f'<p style="color:#444;font-size:14px;margin:0 0 18px;line-height:1.5">{safe_message}</p>' if safe_message else ''}
+        <img src="cid:promo" alt="Promoción" style="width:100%;max-width:504px;height:auto;border-radius:8px;display:block;margin:0 auto" />
+      </div>
+      <div style="background:#f4f6fb;padding:14px 20px;text-align:center">
+        <p style="color:#888;font-size:11px;margin:0">Recibís este mensaje porque sos paciente de Odontología Trifiro. Si no querés recibir más promociones, respondé a este mail avisándonos.</p>
+      </div>
+    </div>
+    """
+    msg = MIMEMultipart("related")
+    msg["Subject"] = subject
+    msg["From"] = f"{config['from_name']} <{config['smtp_user']}>"
+    msg["To"] = to_email
+    msg.attach(MIMEText(html, "html", "utf-8"))
+    img = MIMEImage(image_bytes, _subtype=image_subtype)
+    img.add_header("Content-ID", "<promo>")
+    img.add_header("Content-Disposition", "inline", filename=f"promocion.{image_subtype}")
+    msg.attach(img)
+    return msg
+
+
+def _to_email_safe_image(image_bytes: bytes, ext: str) -> Tuple[bytes, str]:
+    """webp no se ve en varios clientes de mail (ej: Outlook): se convierte a PNG."""
+    ext = ext.lower().lstrip(".")
+    if ext == "webp":
+        try:
+            from PIL import Image
+            buf = io.BytesIO()
+            Image.open(io.BytesIO(image_bytes)).convert("RGBA").save(buf, format="PNG")
+            return buf.getvalue(), "png"
+        except Exception as e:
+            logger.warning(f"No se pudo convertir webp a png: {e}")
+    return image_bytes, "jpeg" if ext in ("jpg", "jpeg") else ext
+
+
+def send_promotion_batch(recipients: List[Tuple[str, str]], subject: str, message: str,
+                         image_bytes: bytes, image_ext: str,
+                         on_result: Callable[[str, bool, str], None],
+                         delay_seconds: float = 0.4) -> None:
+    """Envia un mail individual a cada (nombre, email) usando UNA sola conexion SMTP.
+    Un login por mail es lo que dispara los bloqueos de Gmail; aca se loguea una vez
+    y se reconecta solo si el servidor corta. Reporta cada resultado por on_result."""
+    config = get_email_config()
+    image_bytes, subtype = _to_email_safe_image(image_bytes, image_ext)
+
+    def connect() -> smtplib.SMTP:
+        server = smtplib.SMTP(config["smtp_host"], config["smtp_port"], timeout=30)
+        server.ehlo()
+        server.starttls()
+        server.login(config["smtp_user"], config["smtp_password"])
+        return server
+
+    server = connect()
+    try:
+        for name, email in recipients:
+            msg = _build_promotion_message(config, email, name, subject, message, image_bytes, subtype)
+            try:
+                try:
+                    server.sendmail(config["smtp_user"], email, msg.as_string())
+                except smtplib.SMTPServerDisconnected:
+                    server = connect()
+                    server.sendmail(config["smtp_user"], email, msg.as_string())
+                on_result(email, True, "ok")
+            except smtplib.SMTPRecipientsRefused:
+                on_result(email, False, "Dirección rechazada")
+            except Exception as e:
+                on_result(email, False, str(e))
+            time.sleep(delay_seconds)
+    finally:
+        try:
+            server.quit()
+        except Exception:
+            pass
