@@ -8,7 +8,8 @@ function whatsappUrl(phone: string) {
 }
 import { useNavigate, useLocation } from "react-router-dom";
 import { getPatientReport, addTreatment, updateTreatment, deleteTreatment, getOdontogram, updateTooth, updateDentitionMode, updatePatient, uploadPatientPhoto, getPatientImages, uploadPatientImage, deletePatientImage, getDiagnosticImages, uploadDiagnosticImage, deleteDiagnosticImage, getPatientBudgets, createPatientBudget, updateBudgetStatus, deletePatientBudget, sendDocumentByEmail, getAccountEntries, addAccountEntry, deleteAccountEntry, addMedicalReport, deleteMedicalReport } from "../../api/patientApi";
-import type { PatientImage, Budget, BudgetItem, AccountEntryItem } from "../../types";
+import type { PatientImage, Budget, BudgetItem, AccountEntryItem, Currency } from "../../types";
+import { formatMoney, CURRENCY_LABEL, CURRENCY_SYMBOL } from "../../utils/money";
 import { downloadBudgetPdf } from "../../utils/odontogramPdf";
 import { downloadMedicalHistoryPdf, downloadTreatmentsPdf, downloadOdontogramPdf, downloadFullHistoryPdf, downloadConsentPdf, type ConsentType, getTreatmentsPdfBase64, getBudgetPdfBase64, getConsentPdfBase64, downloadAdmisionPdf, getAdmisionPdfBase64, downloadAccountStatementPdf } from "../../utils/odontogramPdf";
 import { getFaceLabels } from "../../utils/toothFaces";
@@ -58,6 +59,7 @@ export function PatientProfilePage() {
   const [newDiagCategory, setNewDiagCategory] = useState("");
   const diagImageInputRef = useRef<HTMLInputElement>(null);
   const [ccModal, setCcModal] = useState<{ type: "trabajo" | "pago" } | null>(null);
+  const [ccCurrency, setCcCurrency] = useState<Currency>("ARS");
   const [ccForm, setCcForm] = useState({ date: new Date().toISOString().split("T")[0], detail: "", amount: "" });
   const [odontogramPartialStart, setOdontogramPartialStart] = useState<number | null>(null);
   const [dentitionMode, setDentitionMode] = useState<DentitionMode>('adulto');
@@ -396,6 +398,7 @@ export function PatientProfilePage() {
       detail: ccForm.detail,
       debe: ccModal?.type === "trabajo" ? parseFloat(ccForm.amount) || 0 : 0,
       haber: ccModal?.type === "pago" ? parseFloat(ccForm.amount) || 0 : 0,
+      currency: ccCurrency,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accountEntries", patientId] });
@@ -1251,20 +1254,56 @@ export function PatientProfilePage() {
 
         {/* TAB: Cuenta Corriente */}
         {activeTab === "cuenta-corriente" && (() => {
-          const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+          const fmt = (n: number) => formatMoney(n, ccCurrency);
+          // Pesos y dólares son dos cuentas independientes: jamás se suman entre sí.
+          const entriesOf = (c: Currency) => accountEntries.filter(e => e.currency === c);
+          const balanceOf = (c: Currency) => entriesOf(c).reduce((s, e) => s + e.debe - e.haber, 0);
+          const activeEntries = entriesOf(ccCurrency);
           let saldo = 0;
-          const rows = accountEntries.map(e => {
+          const rows = activeEntries.map(e => {
             saldo += e.debe - e.haber;
             return { ...e, saldo };
           });
-          const totalDebe = accountEntries.reduce((s, e) => s + e.debe, 0);
-          const totalHaber = accountEntries.reduce((s, e) => s + e.haber, 0);
+          const totalDebe = activeEntries.reduce((s, e) => s + e.debe, 0);
+          const totalHaber = activeEntries.reduce((s, e) => s + e.haber, 0);
           const saldoFinal = totalDebe - totalHaber;
 
           return (
             <div className="space-y-4 max-w-4xl">
-              {/* Botones principales */}
-              <div className="flex items-center gap-3">
+              {/* Saldos de las dos cuentas, siempre visibles. Tocar una tarjeta cambia de cuenta. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {(["ARS", "USD"] as Currency[]).map(c => {
+                  const b = balanceOf(c);
+                  const hasEntries = entriesOf(c).length > 0;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCcCurrency(c)}
+                      className={`text-left rounded-2xl border p-5 transition-all ${ccCurrency === c ? "border-primary ring-2 ring-primary/30 bg-primary/5" : "border-border/60 bg-card hover:bg-muted/40"}`}
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saldo en {CURRENCY_LABEL[c].toLowerCase()}</p>
+                      <p className={`text-2xl font-bold tabular-nums ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-foreground"}`}>{formatMoney(Math.abs(b), c)}</p>
+                      <p className="text-xs text-muted-foreground">{!hasEntries ? "Sin movimientos" : b > 0 ? "El paciente debe" : b < 0 ? "A favor del paciente" : "Al día"}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selector de cuenta + botones principales */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex p-1 rounded-xl bg-muted/50 border border-border/60">
+                  {(["ARS", "USD"] as Currency[]).map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCcCurrency(c)}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${ccCurrency === c ? "bg-card shadow text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {CURRENCY_LABEL[c]}
+                    </button>
+                  ))}
+                </div>
                 <button
                   onClick={() => { setCcModal({ type: "trabajo" }); setCcForm({ date: new Date().toISOString().split("T")[0], detail: "", amount: "" }); }}
                   className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/30 hover:bg-primary/90 transition-all"
@@ -1278,11 +1317,11 @@ export function PatientProfilePage() {
                   <Plus className="h-4 w-4" /> Pago
                 </button>
                 <button
-                  onClick={() => downloadAccountStatementPdf(report.patient.name, accountEntries)}
-                  disabled={accountEntries.length === 0}
+                  onClick={() => downloadAccountStatementPdf(report.patient.name, activeEntries, ccCurrency)}
+                  disabled={activeEntries.length === 0}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <FileText className="h-4 w-4" /> Descargar PDF
+                  <FileText className="h-4 w-4" /> Descargar PDF · {CURRENCY_LABEL[ccCurrency]}
                 </button>
               </div>
 
@@ -1301,7 +1340,7 @@ export function PatientProfilePage() {
                   </thead>
                   <tbody className="divide-y divide-border/40">
                     {rows.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground text-sm">Sin movimientos registrados.</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground text-sm">Sin movimientos en {CURRENCY_LABEL[ccCurrency].toLowerCase()}.</td></tr>
                     ) : rows.map((row, i) => (
                       <tr key={row.id ?? i} className={`hover:bg-muted/30 transition-colors ${row.haber > 0 ? "bg-emerald-50/30 dark:bg-emerald-950/20" : ""}`}>
                         <td className="px-4 py-3 text-muted-foreground tabular-nums whitespace-nowrap">{row.date}</td>
@@ -1641,7 +1680,7 @@ export function PatientProfilePage() {
           <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm">
             <div className={`flex items-center justify-between p-5 border-b ${ccModal.type === "trabajo" ? "bg-primary/5" : "bg-emerald-50 dark:bg-emerald-950/40"}`}>
               <h3 className={`font-bold text-base ${ccModal.type === "trabajo" ? "text-primary" : "text-emerald-700 dark:text-emerald-300"}`}>
-                {ccModal.type === "trabajo" ? "Ingresando Trabajo" : "Ingresando Pago"}
+                {ccModal.type === "trabajo" ? "Ingresando Trabajo" : "Ingresando Pago"} en {CURRENCY_LABEL[ccCurrency].toLowerCase()}
               </h3>
               <button onClick={() => setCcModal(null)} className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
                 <X className="h-4 w-4" />
@@ -1661,7 +1700,7 @@ export function PatientProfilePage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground">
-                  {ccModal.type === "trabajo" ? "Debe ($)" : "Haber ($)"}
+                  {ccModal.type === "trabajo" ? `Debe (${CURRENCY_SYMBOL[ccCurrency]})` : `Haber (${CURRENCY_SYMBOL[ccCurrency]})`}
                 </label>
                 <input type="number" min="0" value={ccForm.amount || ""}
                   onChange={e => setCcForm(f => ({ ...f, amount: e.target.value }))}

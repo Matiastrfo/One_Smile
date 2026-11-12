@@ -145,6 +145,8 @@ export interface PatientImage {
   professional_name?: string;
 }
 
+export type Currency = "ARS" | "USD";
+
 export interface AccountEntryItem {
   id?: number;
   patient_id: number;
@@ -152,6 +154,7 @@ export interface AccountEntryItem {
   detail: string;
   debe: number;
   haber: number;
+  currency: Currency;
   professional_name?: string;
 }
 
@@ -180,14 +183,20 @@ export interface PatientAccount {
   balance: number;
 }
 
+export interface CurrencyTotals {
+  debe: number;
+  haber: number;
+  balance: number;
+}
+
+// Pesos y dolares viajan siempre separados: nunca se suman entre si.
 export interface AccountSummaryRow {
   patient_id: number;
   patient_name: string;
   last_name?: string;
   dni?: string;
-  total_charges: number;
-  total_payments: number;
-  balance: number;
+  ars: CurrencyTotals;
+  usd: CurrencyTotals;
 }
 
 export type TreatmentType = 'NONE' | 'CARIES' | 'FILLING' | 'EXTRACTION_PENDING' | 'EXTRACTED' | 'ABSENT' | 'CROWN' | 'RX' | 'IMPLANT' | 'PERNO' | 'ENDODONCIA' | 'PROTESIS' | 'PROTESIS_PARCIAL' | 'PUENTE';

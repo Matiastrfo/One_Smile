@@ -1,5 +1,5 @@
 import api from "./axios";
-import type { Patient, PatientsPage } from "../types";
+import type { Patient, PatientsPage, Currency } from "../types";
 
 export const sendDocumentByEmail = async (params: {
   toEmail: string;
@@ -118,7 +118,7 @@ export const getAccountEntries = async (patientId: number) => {
   return data;
 };
 
-export const addAccountEntry = async (patientId: number, entry: { date: string; detail: string; debe: number; haber: number }) => {
+export const addAccountEntry = async (patientId: number, entry: { date: string; detail: string; debe: number; haber: number; currency: Currency }) => {
   const { data } = await api.post(`/patients/${patientId}/account-entries`, { ...entry, patient_id: patientId });
   return data;
 };

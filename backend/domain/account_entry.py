@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Literal, Optional
 
 class AccountEntry(BaseModel):
     id: Optional[int] = None
@@ -9,4 +9,5 @@ class AccountEntry(BaseModel):
     detail: str
     debe: float = 0.0
     haber: float = 0.0
+    currency: Literal["ARS", "USD"] = "ARS"
     professional_name: Optional[str] = None

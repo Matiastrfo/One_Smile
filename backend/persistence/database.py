@@ -339,10 +339,18 @@ def init_db():
             detail TEXT NOT NULL,
             debe REAL NOT NULL DEFAULT 0,
             haber REAL NOT NULL DEFAULT 0,
+            currency TEXT NOT NULL DEFAULT 'ARS',
             FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
             FOREIGN KEY (professional_id) REFERENCES users(id) ON DELETE SET NULL
         )
     """)
+
+    # Migración: cuenta corriente en dos monedas. Los movimientos que ya existían eran en pesos,
+    # por eso el DEFAULT 'ARS' los deja bien sin tocar nada.
+    cursor.execute("PRAGMA table_info(account_entries)")
+    ae_columns = [col[1] for col in cursor.fetchall()]
+    if "currency" not in ae_columns:
+        cursor.execute("ALTER TABLE account_entries ADD COLUMN currency TEXT NOT NULL DEFAULT 'ARS'")
 
     # Tabla: pagos de pacientes (cuenta corriente)
     cursor.execute("""

@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
-import type { DentalPiece, TreatmentType, Treatment, Budget, AccountEntryItem } from '../types';
+import type { DentalPiece, TreatmentType, Treatment, Budget, AccountEntryItem, Currency } from '../types';
+import { formatMoney, CURRENCY_LABEL } from './money';
 
 const TREATMENT_LABELS: Record<TreatmentType, string> = {
   NONE:               'Sano',
@@ -1444,13 +1445,15 @@ export function downloadAdmisionPdf(patientName: string, returnBase64 = false): 
   doc.save(`admision_${patientName.replace(/\s+/g, '_')}.pdf`);
 }
 
-export function downloadAccountStatementPdf(patientName: string, entries: AccountEntryItem[]): void {
+// `entries` ya viene filtrado a una sola moneda: cada PDF es de UNA cuenta (pesos o dolares).
+export function downloadAccountStatementPdf(patientName: string, entries: AccountEntryItem[], currency: Currency): void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const darkBlue: [number, number, number] = [10, 40, 90];
   const blue: [number, number, number] = [0, 100, 200];
-  const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+  // Intl usa espacio de no separacion entre simbolo y monto; la fuente del PDF lo dibuja mal.
+  const fmt = (n: number) => formatMoney(n, currency).replace(/ /g, ' ');
 
   const drawHeader = () => {
     doc.setFillColor(...darkBlue); doc.rect(0, 0, W, 36, 'F');
@@ -1462,7 +1465,7 @@ export function downloadAccountStatementPdf(patientName: string, entries: Accoun
     doc.setTextColor(160, 195, 240);
     doc.text('ODONTOLOGÍA TRIFIRO', W / 2, 22, { align: 'center' });
     doc.setFontSize(9); doc.setTextColor(200, 225, 255);
-    doc.text('CUENTA CORRIENTE', W / 2, 30, { align: 'center' });
+    doc.text(`CUENTA CORRIENTE EN ${CURRENCY_LABEL[currency].toUpperCase()}`, W / 2, 30, { align: 'center' });
   };
   drawHeader();
 
@@ -1500,10 +1503,10 @@ export function downloadAccountStatementPdf(patientName: string, entries: Accoun
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkBlue);
     const lines = doc.splitTextToSize(`${entry.date}  —  ${entry.detail}`, 72);
     doc.text(lines, colX[0], y);
-    doc.text(entry.debe > 0 ? `$${entry.debe.toLocaleString('es-AR')}` : '—', colX[1], y);
-    doc.text(entry.haber > 0 ? `$${entry.haber.toLocaleString('es-AR')}` : '—', colX[2], y);
+    doc.text(entry.debe > 0 ? fmt(entry.debe) : '—', colX[1], y);
+    doc.text(entry.haber > 0 ? fmt(entry.haber) : '—', colX[2], y);
     doc.setTextColor(saldo > 0 ? 200 : 0, saldo > 0 ? 40 : 130, saldo > 0 ? 40 : 60);
-    doc.text(`$${Math.abs(saldo).toLocaleString('es-AR')}${saldo < 0 ? ' ↑' : ''}`, colX[3], y);
+    doc.text(`${fmt(Math.abs(saldo))}${saldo < 0 ? ' ↑' : ''}`, colX[3], y);
     y += Math.max(lines.length * 6, 9);
   });
 
@@ -1524,5 +1527,5 @@ export function downloadAccountStatementPdf(patientName: string, entries: Accoun
     doc.text('Documento generado por ONE Smile · Odontología Trifiro', W / 2, H - 5, { align: 'center' });
   }
 
-  doc.save(`cuenta_corriente_${patientName.replace(/\s+/g, '_')}.pdf`);
+  doc.save(`cuenta_corriente_${currency}_${patientName.replace(/\s+/g, '_')}.pdf`);
 }

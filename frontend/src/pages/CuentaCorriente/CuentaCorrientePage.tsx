@@ -3,19 +3,24 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Wallet, Search, User } from "lucide-react";
 import { getAccountSummary } from "../../api/patientApi";
+import { formatMoney, CURRENCY_LABEL } from "../../utils/money";
+import type { AccountSummaryRow, Currency, CurrencyTotals } from "../../types";
 
-interface AccountSummaryRow {
-  patient_id: number;
-  patient_name: string;
-  last_name?: string;
-  dni?: string;
-  total_debe: number;
-  total_haber: number;
-  balance: number;
-}
+const CURRENCIES: { currency: Currency; key: "ars" | "usd" }[] = [
+  { currency: "ARS", key: "ars" },
+  { currency: "USD", key: "usd" },
+];
 
-function fmt(n: number) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+function BalanceCell({ totals, currency }: { totals: CurrencyTotals; currency: Currency }) {
+  if (totals.debe === 0 && totals.haber === 0) return <span className="text-muted-foreground">—</span>;
+  const { balance } = totals;
+  return (
+    <span className={`inline-flex items-center gap-1 font-bold ${balance > 0 ? "text-rose-600" : balance < 0 ? "text-green-600" : "text-muted-foreground"}`}>
+      {balance > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : balance < 0 ? <TrendingDown className="h-3.5 w-3.5" /> : null}
+      {formatMoney(Math.abs(balance), currency)}
+      {balance < 0 && <span className="text-xs font-normal">(a favor)</span>}
+    </span>
+  );
 }
 
 export function CuentaCorrientePage() {
@@ -31,9 +36,12 @@ export function CuentaCorrientePage() {
     return full.includes(search.toLowerCase());
   });
 
-  const totalDebe = summary.reduce((a, r) => a + r.total_debe, 0);
-  const totalHaber = summary.reduce((a, r) => a + r.total_haber, 0);
-  const totalBalance = totalDebe - totalHaber;
+  // Totales por moneda: cada una se suma solo con sí misma.
+  const totalsFor = (key: "ars" | "usd") => {
+    const debe = summary.reduce((a, r) => a + r[key].debe, 0);
+    const haber = summary.reduce((a, r) => a + r[key].haber, 0);
+    return { debe, haber, balance: debe - haber };
+  };
 
   if (isLoading) return <div className="p-8 text-center animate-pulse text-muted-foreground">Cargando cuentas corrientes...</div>;
 
@@ -45,24 +53,36 @@ export function CuentaCorrientePage() {
         </div>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Cuenta Corriente</h2>
-          <p className="text-muted-foreground">Resumen financiero de todos los pacientes</p>
+          <p className="text-muted-foreground">Resumen financiero de todos los pacientes, en pesos y en dólares</p>
         </div>
       </div>
 
-      {/* Totales globales */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total facturado</p>
-          <p className="text-2xl font-bold text-foreground">{fmt(totalDebe)}</p>
-        </div>
-        <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total cobrado</p>
-          <p className="text-2xl font-bold text-green-600">{fmt(totalHaber)}</p>
-        </div>
-        <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saldo pendiente</p>
-          <p className={`text-2xl font-bold ${totalBalance > 0 ? "text-rose-600" : "text-green-600"}`}>{fmt(totalBalance)}</p>
-        </div>
+      {/* Totales globales: un bloque por moneda */}
+      <div className="space-y-4">
+        {CURRENCIES.map(({ currency, key }) => {
+          const t = totalsFor(key);
+          return (
+            <div key={currency} className="space-y-2">
+              <span className="inline-block text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                {CURRENCY_LABEL[currency]}
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total facturado</p>
+                  <p className="text-2xl font-bold text-foreground">{formatMoney(t.debe, currency)}</p>
+                </div>
+                <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total cobrado</p>
+                  <p className="text-2xl font-bold text-green-600">{formatMoney(t.haber, currency)}</p>
+                </div>
+                <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saldo pendiente</p>
+                  <p className={`text-2xl font-bold ${t.balance > 0 ? "text-rose-600" : "text-green-600"}`}>{formatMoney(t.balance, currency)}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Buscador */}
@@ -77,21 +97,20 @@ export function CuentaCorrientePage() {
         />
       </div>
 
-      {/* Tabla */}
+      {/* Tabla: un saldo por moneda en la misma fila */}
       <div className="rounded-2xl border border-border/60 overflow-hidden shadow-sm bg-card">
         <table className="w-full text-left text-sm">
           <thead className="bg-muted/50">
             <tr>
               <th className="px-4 py-3 font-semibold">Paciente</th>
-              <th className="px-4 py-3 font-semibold text-right">Facturado</th>
-              <th className="px-4 py-3 font-semibold text-right">Cobrado</th>
-              <th className="px-4 py-3 font-semibold text-right">Saldo</th>
+              <th className="px-4 py-3 font-semibold text-right">Saldo en pesos</th>
+              <th className="px-4 py-3 font-semibold text-right">Saldo en dólares</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No hay pacientes.</td></tr>
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No hay pacientes.</td></tr>
             ) : filtered.map(row => (
               <tr key={row.patient_id} className="hover:bg-muted/40 transition-colors">
                 <td className="px-4 py-3">
@@ -105,15 +124,8 @@ export function CuentaCorrientePage() {
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-medium">{fmt(row.total_debe)}</td>
-                <td className="px-4 py-3 text-right font-medium text-green-600">{fmt(row.total_haber)}</td>
-                <td className="px-4 py-3 text-right">
-                  <span className={`inline-flex items-center gap-1 font-bold ${row.balance > 0 ? "text-rose-600" : row.balance < 0 ? "text-green-600" : "text-muted-foreground"}`}>
-                    {row.balance > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : row.balance < 0 ? <TrendingDown className="h-3.5 w-3.5" /> : null}
-                    {fmt(Math.abs(row.balance))}
-                    {row.balance < 0 && <span className="text-xs font-normal">(a favor)</span>}
-                  </span>
-                </td>
+                <td className="px-4 py-3 text-right"><BalanceCell totals={row.ars} currency="ARS" /></td>
+                <td className="px-4 py-3 text-right"><BalanceCell totals={row.usd} currency="USD" /></td>
                 <td className="px-4 py-3 text-right">
                   <Link
                     to={`/patients/${row.patient_id}`}
